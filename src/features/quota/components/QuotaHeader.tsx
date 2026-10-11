@@ -10,20 +10,24 @@ export type QuotaHeaderProps = {
   refreshing: boolean;
   disableControls: boolean;
   onRefreshAll: () => void;
+  showEmails?: boolean;
+  onToggleEmails?: () => void;
 };
 
-/**
- * 额度页头部：标题领衔 + ▍mono 遥测 meta 行 + 墨色药丸「刷新全部」。
- * 与凭证库头部同语汇（无 eyebrow —— ▍游标挂在 meta 行开头）。
- *
- * 入场：三处 `data-reveal` 交给页面壳的 useRevealGroup 统一编排
- * （标题 0ms → meta 70ms → 动作 140ms → tabs 210ms）。
- */
+/** Quota page header with credential counts and refresh actions. */
 export function QuotaHeader(props: QuotaHeaderProps) {
-  const { totalCount, loadedCount, attentionCount, refreshing, disableControls, onRefreshAll } =
-    props;
+  const {
+    totalCount,
+    loadedCount,
+    attentionCount,
+    refreshing,
+    disableControls,
+    onRefreshAll,
+    showEmails,
+    onToggleEmails,
+  } = props;
   const { t } = useTranslation();
-  // 批量结果陆续落地时，「已加载」是页面上唯一滚动的数字
+  // Animate the loaded count as batch refresh results arrive.
   const displayLoadedCount = useCountUp(loadedCount);
 
   return (
@@ -55,6 +59,16 @@ export function QuotaHeader(props: QuotaHeaderProps) {
         </p>
       </div>
       <div className={styles.actions} data-reveal>
+        {onToggleEmails && (
+          <button
+            type="button"
+            className={styles.emailAction}
+            onClick={onToggleEmails}
+            aria-pressed={showEmails}
+          >
+            {t(showEmails ? 'quota_management.hide_emails' : 'quota_management.show_emails')}
+          </button>
+        )}
         <button
           type="button"
           className={styles.primaryAction}

@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { recordQuotaResults, type ForecastHistory } from '@/features/quota/forecast';
 import { getQuotaCacheFileName } from '@/utils/quota/identity';
 import type {
   AntigravityQuotaState,
@@ -19,6 +20,7 @@ type QuotaUpdater<T> = T | ((prev: T) => T);
 
 interface QuotaStoreState {
   cacheGeneration: number;
+  forecastHistory: ForecastHistory;
   fileGenerations: Record<string, number>;
   antigravityQuota: Record<string, AntigravityQuotaState>;
   claudeQuota: Record<string, ClaudeQuotaState>;
@@ -48,6 +50,7 @@ const resolveUpdater = <T>(updater: QuotaUpdater<T>, prev: T): T => {
 
 export const useQuotaStore = create<QuotaStoreState>((set) => ({
   cacheGeneration: 0,
+  forecastHistory: {},
   fileGenerations: {},
   antigravityQuota: {},
   claudeQuota: {},
@@ -58,35 +61,79 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
   qoderQuota: {},
   xaiQuota: {},
   setAntigravityQuota: (updater) =>
-    set((state) => ({
-      antigravityQuota: resolveUpdater(updater, state.antigravityQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.antigravityQuota);
+      return {
+        antigravityQuota: next,
+        forecastHistory: recordQuotaResults(
+          state.forecastHistory,
+          'antigravity',
+          state.antigravityQuota,
+          next
+        ),
+      };
+    }),
   setClaudeQuota: (updater) =>
-    set((state) => ({
-      claudeQuota: resolveUpdater(updater, state.claudeQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.claudeQuota);
+      return {
+        claudeQuota: next,
+        forecastHistory: recordQuotaResults(
+          state.forecastHistory,
+          'claude',
+          state.claudeQuota,
+          next
+        ),
+      };
+    }),
   setCodexQuota: (updater) =>
-    set((state) => ({
-      codexQuota: resolveUpdater(updater, state.codexQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.codexQuota);
+      return {
+        codexQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'codex', state.codexQuota, next),
+      };
+    }),
   setDevinQuota: (updater) =>
-    set((state) => ({
-      devinQuota: resolveUpdater(updater, state.devinQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.devinQuota);
+      return {
+        devinQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'devin', state.devinQuota, next),
+      };
+    }),
   setKimiQuota: (updater) =>
-    set((state) => ({
-      kimiQuota: resolveUpdater(updater, state.kimiQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.kimiQuota);
+      return {
+        kimiQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'kimi', state.kimiQuota, next),
+      };
+    }),
   setMetaQuota: (updater) =>
-    set((state) => ({ metaQuota: resolveUpdater(updater, state.metaQuota) })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.metaQuota);
+      return {
+        metaQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'meta', state.metaQuota, next),
+      };
+    }),
   setQoderQuota: (updater) =>
-    set((state) => ({
-      qoderQuota: resolveUpdater(updater, state.qoderQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.qoderQuota);
+      return {
+        qoderQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'qoder', state.qoderQuota, next),
+      };
+    }),
   setXaiQuota: (updater) =>
-    set((state) => ({
-      xaiQuota: resolveUpdater(updater, state.xaiQuota),
-    })),
+    set((state) => {
+      const next = resolveUpdater(updater, state.xaiQuota);
+      return {
+        xaiQuota: next,
+        forecastHistory: recordQuotaResults(state.forecastHistory, 'xai', state.xaiQuota, next),
+      };
+    }),
   clearQuotaCache: (names) =>
     set((state) => {
       if (names) {
@@ -107,6 +154,11 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
         };
         return {
           fileGenerations,
+          forecastHistory: Object.fromEntries(
+            Object.entries(state.forecastHistory).filter(
+              ([id]) => !invalidatedNames.has(getQuotaCacheFileName(id.slice(id.indexOf(':') + 1)))
+            )
+          ),
           antigravityQuota: omitNames(state.antigravityQuota),
           claudeQuota: omitNames(state.claudeQuota),
           codexQuota: omitNames(state.codexQuota),
@@ -119,6 +171,7 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
       }
       return {
         cacheGeneration: state.cacheGeneration + 1,
+        forecastHistory: {},
         fileGenerations: {},
         antigravityQuota: {},
         claudeQuota: {},

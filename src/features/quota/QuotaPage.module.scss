@@ -1,8 +1,6 @@
 @use '../../styles/mixins' as *;
 
-/* ============================================================
- * 额度页壳层：纯布局，视觉细节都在各组件的 colocated 模块里。
- * ============================================================ */
+/* Quota page layout; component modules own their visual styles. */
 
 .page {
   display: flex;
@@ -12,7 +10,7 @@
   min-width: 0;
 }
 
-/* ---------- 工作区（tabs + 网格 + 分页） ---------- */
+/* Workspace: tabs, grid, and pagination. */
 
 .workbench {
   display: flex;
@@ -21,7 +19,7 @@
   min-width: 0;
 }
 
-/* 提供商导航独占一行，保留原生横向滚动。 */
+/* Provider navigation keeps its own horizontally scrolling row. */
 
 .tabsRow {
   display: flex;
@@ -121,7 +119,9 @@
 
 .sort {
   flex: 0 0 auto;
-  min-width: 148px;
+  display: flex;
+  gap: 12px;
+  min-width: 300px;
   max-width: 100%;
 
   button[aria-haspopup='listbox'] {
@@ -157,6 +157,10 @@
 }
 
 @include mobile {
+  .sort {
+    width: 100%;
+    min-width: 0;
+  }
   .search {
     flex: 1 1 220px;
     height: 40px;
@@ -183,9 +187,7 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- 卡片网格 ----------
- * 列宽由 CSS 决定（不再用 JS 测量）：额度卡承载水位条，取 340px 下限，
- * 与认证文件页配额模式（.gridQuota）同一档。 */
+/* CSS determines card columns with a 340px minimum, matching the auth-file quota grid. */
 
 .grid {
   display: grid;
@@ -194,7 +196,7 @@
   align-items: stretch;
 }
 
-/* ---------- 分页 ---------- */
+/* Pagination. */
 
 .pagination {
   display: flex;
@@ -217,4 +219,10 @@
   .page {
     gap: 16px;
   }
+}
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }

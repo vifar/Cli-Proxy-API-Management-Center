@@ -1,11 +1,4 @@
-/**
- * 额度卡片：头部（提供商图标 + mono 文件名）+ 四态 body + 动作 footer。
- *
- * - idle：整个 body 是一个点击加载按钮（上游直连有速率考虑，不自动拉取）；
- * - loading：双幽灵行骨架（aria-busy，文字等价视觉隐藏）；
- * - error：失败色条 + footer 刷新即重试；
- * - success：provider Body（穿 QuotaBody.module.scss 全页外衣）。
- */
+/** Credential quota card; both layouts retain the same provider bodies and actions. */
 
 import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,16 +18,28 @@ import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
 import bodyStyles from './QuotaBody.module.scss';
 import styles from './QuotaCard.module.scss';
 
-/** 额度页全页外衣：QuotaBody 模块绑定成类型化契约（缺键在模块初始化即抛）。 */
+/** Bind the quota body style contract once at module initialization. */
 const quotaClasses = bindQuotaClasses(bodyStyles, 'QuotaBody.module.scss');
+const ledgerQuotaClasses = {
+  ...quotaClasses,
+  quotaRow: `${quotaClasses.quotaRow} ${styles.ledgerQuotaRow}`,
+  quotaRowHeader: `${quotaClasses.quotaRowHeader} ${styles.ledgerQuotaHeader}`,
+  quotaMeta: `${quotaClasses.quotaMeta} ${styles.ledgerQuotaMeta}`,
+  quotaPercent: `${quotaClasses.quotaPercent} ${styles.ledgerQuotaPercent}`,
+  quotaReset: `${quotaClasses.quotaReset} ${styles.ledgerQuotaReset}`,
+  quotaResetRelative: `${quotaClasses.quotaResetRelative} ${styles.ledgerQuotaRelative}`,
+  quotaBar: `${quotaClasses.quotaBar} ${styles.ledgerQuotaBar}`,
+};
 
 export type QuotaCardProps = {
   entry: QuotaFileEntry;
+  layout?: 'ledger' | 'cards';
+  showEmails?: boolean;
   quota?: QuotaCardState;
   resolvedTheme: ResolvedTheme;
   canRefresh: boolean;
   resetting: boolean;
-  /** 首屏级联入场延迟；null = 不入场（切 tab / 翻页 / 刷新新挂载的卡片）。 */
+  /** Initial entrance delay; null skips the animation. */
   entranceDelayMs?: number | null;
   onRefresh: () => void;
   onReset: () => void;
@@ -43,6 +48,8 @@ export type QuotaCardProps = {
 export function QuotaCard(props: QuotaCardProps) {
   const {
     entry,
+    layout = 'cards',
+    showEmails,
     quota,
     resolvedTheme,
     canRefresh,
@@ -54,9 +61,11 @@ export function QuotaCard(props: QuotaCardProps) {
   const { t } = useTranslation();
   const adapter = QUOTA_ADAPTERS[entry.type];
   const file = entry.file;
-  const displayName = getQuotaDisplayName(file);
+  const displayName = getQuotaDisplayName(
+    showEmails === false ? { ...file, email: undefined } : file
+  );
 
-  // 挂载时捕获一次延迟：后续 props 变 null 不影响本卡（React 19 禁渲染期读 ref）
+  // Capture the entrance delay once so later refreshes do not replay it.
   const [mountEntranceDelayMs] = useState<number | null>(entranceDelayMs ?? null);
   const entranceStyle =
     mountEntranceDelayMs === null
@@ -80,7 +89,7 @@ export function QuotaCard(props: QuotaCardProps) {
 
   return (
     <article
-      className={`${styles.card} ${mountEntranceDelayMs === null ? '' : styles.cardEnter}`}
+      className={`${styles.card} ${layout === 'ledger' ? styles.ledger : ''} ${mountEntranceDelayMs === null ? '' : styles.cardEnter}`}
       style={entranceStyle}
     >
       <header className={styles.head}>
@@ -99,9 +108,15 @@ export function QuotaCard(props: QuotaCardProps) {
             <span className={styles.iconFallback}>{typeLabel.slice(0, 1).toUpperCase()}</span>
           )}
         </span>
-        <span className={styles.fileName} title={displayName}>
-          {displayName}
-        </span>
+        <div className={styles.identity}>
+          <span className={styles.fileName} title={displayName}>
+            {displayName}
+          </span>
+          {layout === 'ledger' && <span className={styles.providerName}>{typeLabel}</span>}
+          {showEmails && file.email && !displayName.includes(file.email) && (
+            <span className={styles.email}>{file.email}</span>
+          )}
+        </div>
       </header>
 
       <div className={styles.body}>
@@ -130,7 +145,10 @@ export function QuotaCard(props: QuotaCardProps) {
             {t(`${adapter.i18nPrefix}.load_failed`, { message: errorMessage })}
           </div>
         ) : quota ? (
-          <adapter.Body quota={quota} classes={quotaClasses} />
+          <adapter.Body
+            quota={quota}
+            classes={layout === 'ledger' ? ledgerQuotaClasses : quotaClasses}
+          />
         ) : (
           <div className={styles.idleHint}>{t(`${adapter.i18nPrefix}.idle`)}</div>
         )}

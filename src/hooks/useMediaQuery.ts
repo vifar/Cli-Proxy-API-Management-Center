@@ -1,12 +1,14 @@
 /**
- * 媒体查询 Hook
+ * Subscribe to a media query, with a safe fallback during server rendering.
  */
 
 import { useState, useEffect } from 'react';
 
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
-    return window.matchMedia(query).matches;
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false;
   });
 
   useEffect(() => {

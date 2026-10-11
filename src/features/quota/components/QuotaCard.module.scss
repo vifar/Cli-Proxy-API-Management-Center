@@ -1,10 +1,6 @@
 @use '../../../styles/mixins' as *;
 
-/* ============================================================
- * 额度卡片 — 继承凭证卡 statTile 配方（14px 圆角 / 1px 边框 / 82% 透感纸面）。
- * 提供商身份只由图标承载（混合网格下五色渐变卡底会互相打架，已退役）。
- * 遥测内容一律 mono + tabular-nums。
- * ============================================================ */
+/* Quota cards share the credential tile border, radius, and translucent surface. Provider icons carry identity; numeric values use tabular monospace text. */
 
 .card {
   position: relative;
@@ -29,7 +25,7 @@
   }
 }
 
-/* 首次数据到达时的一次性级联入场；切 tab / 翻页 / 刷新不重播 */
+/* Play the entrance once; tab changes and refreshes do not replay it. */
 .cardEnter {
   animation: quota-card-in 0.45s var(--ease-out-strong, ease-out) both;
   animation-delay: var(--card-delay, 0s);
@@ -42,7 +38,7 @@
   }
 }
 
-/* ---------- 头部：品牌图标 + 文件名 ---------- */
+/* Header: provider icon and filename. */
 
 .head {
   display: flex;
@@ -85,7 +81,7 @@
   @include text-ellipsis;
 }
 
-/* ---------- body 容器 ---------- */
+/* Quota body container. */
 
 .body {
   display: flex;
@@ -94,7 +90,7 @@
   min-width: 0;
 }
 
-/* ---------- idle：整块 body 即点击加载的落点 ---------- */
+/* Idle body is the load target. */
 
 .idleBody {
   display: flex;
@@ -150,7 +146,7 @@
   text-align: center;
 }
 
-/* ---------- loading：双幽灵行骨架 ---------- */
+/* Loading skeleton rows. */
 
 .skeleton {
   display: flex;
@@ -165,7 +161,7 @@
   gap: 6px;
 }
 
-/* 骨架：底色 + 一道 1.2s 匀速扫光（linear —— 环境性匀速运动的唯一例外） */
+/* Skeleton uses a steady linear shimmer. */
 .skeletonLabel,
 .skeletonTrack {
   display: block;
@@ -226,7 +222,7 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- footer 动作 ---------- */
+/* Footer actions. */
 
 .actionRow {
   display: flex;
@@ -235,7 +231,7 @@
   flex-wrap: wrap;
 }
 
-/* 安静描边药丸（与凭证卡图标动作同族：hover 才显色块） */
+/* Outlined action pills gain a surface on hover. */
 .actionPill {
   display: inline-flex;
   align-items: center;
@@ -306,5 +302,111 @@
   .skeletonTrack,
   .spinning {
     animation: none;
+  }
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.providerName,
+.email {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.ledger {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.85fr) minmax(0, 2fr) minmax(145px, 0.7fr);
+  align-items: center;
+  gap: 24px;
+  padding: 23px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: transparent;
+  .head {
+    align-items: flex-start;
+  }
+  .body {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+  }
+  .body > * {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+  .actionRow {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  &:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+.ledgerQuotaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 6px;
+
+  .ledgerQuotaHeader,
+  .ledgerQuotaMeta {
+    display: contents;
+  }
+  .ledgerQuotaPercent {
+    grid-column: 2;
+    grid-row: 1;
+    font-family: $font-mono;
+    font-size: 12px;
+  }
+  .ledgerQuotaBar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .ledgerQuotaRelative {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    &::before {
+      display: none;
+    }
+  }
+  .ledgerQuotaReset {
+    grid-column: 2;
+    grid-row: 3;
+    max-width: 75px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+}
+@media (max-width: 1050px) {
+  .ledger {
+    grid-template-columns: minmax(160px, 0.8fr) minmax(0, 2fr);
+    .actionRow {
+      grid-column: 2;
+    }
+  }
+}
+@media (max-width: 640px) {
+  .ledger {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    .actionRow {
+      grid-column: 1;
+      justify-content: flex-start;
+    }
   }
 }
