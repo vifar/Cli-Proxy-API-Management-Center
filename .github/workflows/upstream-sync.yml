@@ -1,6 +1,6 @@
 name: Upstream Sync
 
-# Keeps kaitranntt/Cli-Proxy-API-Management-Center synced with
+# Keeps this fork synced with
 # router-for-me/Cli-Proxy-API-Management-Center while preserving fork-specific
 # dashboard changes. Clean merges that pass the full verification gate fast-forward main.
 # Conflicts or gate failures update a single tracking issue.
@@ -32,7 +32,7 @@ env:
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, king-server, cpamc]
     steps:
       - name: Checkout fork
         uses: actions/checkout@v4
@@ -438,7 +438,7 @@ jobs:
               --repo "${{ github.repository }}" \
               --title "upstream-sync blocked: needs maintainer attention" \
               --label "${TRACKING_ISSUE_LABEL}" \
-              --assignee kaitranntt \
+              --assignee "${GITHUB_REPOSITORY_OWNER}" \
               --body "${BODY}"
           else
             gh issue comment "${ISSUE}" --repo "${{ github.repository }}" --body "${BODY}"
