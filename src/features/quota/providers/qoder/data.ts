@@ -2,6 +2,9 @@
 
 import type { TFunction } from 'i18next';
 import type { AuthFileItem, QoderQuotaState, QoderUsageSnapshot } from '@/types';
+import { authFilesApi } from '@/services/api/authFiles';
+import { apiClient } from '@/services/api/client';
+import { normalizeAuthIndex } from '@/utils/authIndex';
 import { isDisabledAuthFile, isQoderFile } from '@/utils/quota';
 import type { QuotaProviderData } from '../types';
 
@@ -27,7 +30,18 @@ export const qoderRemainingPercent = (usage: Pick<QoderUsageSnapshot, 'percentag
   100 - Math.max(0, Math.min(100, usage.percentage * 100));
 
 const fetchQoderQuota = async (file: AuthFileItem, t: TFunction): Promise<QoderUsageSnapshot> => {
-  const usage = readQoderUsageSnapshot(file);
+  const revision = apiClient.getConnectionRevision();
+  const authIndex = normalizeAuthIndex(file.authIndex ?? file['auth_index']) || undefined;
+  const response = await authFilesApi.list({ name: file.name, authIndex });
+  if (revision !== apiClient.getConnectionRevision()) {
+    throw new DOMException('Connection changed while loading quota', 'AbortError');
+  }
+  const current = response.files.find((candidate) =>
+    authIndex
+      ? normalizeAuthIndex(candidate.authIndex ?? candidate['auth_index']) === authIndex
+      : candidate.name === file.name
+  );
+  const usage = current && isQoderFile(current) ? readQoderUsageSnapshot(current) : null;
   if (!usage) throw new Error(t('qoder_quota.empty_data'));
   return usage;
 };

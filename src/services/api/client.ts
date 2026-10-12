@@ -1,6 +1,5 @@
 /**
- * Axios API 客户端
- * 替代原项目 src/core/api-client.js
+ * Axios client for the management API.
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
@@ -15,6 +14,8 @@ import {
 } from '@/utils/constants';
 import { computeApiUrl } from '@/utils/connection';
 import { parseApiErrorResponse } from './apiError';
+
+type ScopedRequestConfig = AxiosRequestConfig & { managementConnectionRevision: number };
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -34,7 +35,7 @@ class ApiClient {
   }
 
   /**
-   * 设置 API 配置
+   * Configure the API connection.
    */
   setConfig(config: ApiClientConfig): void {
     const apiBase = computeApiUrl(config.apiBase);
@@ -54,6 +55,17 @@ class ApiClient {
   /** Guards read/modify/write operations across connection changes, including ABA switches. */
   getConnectionRevision(): number {
     return this.connectionRevision;
+  }
+
+  private scopeRequest(config?: AxiosRequestConfig): ScopedRequestConfig {
+    return { ...config, managementConnectionRevision: this.connectionRevision };
+  }
+
+  private isCurrentRequest(config?: AxiosRequestConfig): boolean {
+    return (
+      (config as ScopedRequestConfig | undefined)?.managementConnectionRevision ===
+      this.connectionRevision
+    );
   }
 
   private readHeader(headers: Record<string, unknown> | undefined, keys: string[]): string | null {
@@ -108,16 +120,19 @@ class ApiClient {
   }
 
   /**
-   * 设置请求/响应拦截器
+   * Install request and response interceptors.
    */
   private setupInterceptors(): void {
-    // 请求拦截器
+    // Bind queued requests to the connection that created them.
     this.instance.interceptors.request.use(
       (config) => {
-        // 设置 baseURL
+        if (!this.isCurrentRequest(config)) {
+          throw new axios.CanceledError('Connection changed during request', config);
+        }
+        // Set the management base URL.
         config.baseURL = this.apiBase;
 
-        // 添加认证头
+        // Attach management authentication.
         if (this.managementKey) {
           config.headers.Authorization = `Bearer ${this.managementKey}`;
         }
@@ -127,9 +142,12 @@ class ApiClient {
       (error) => Promise.reject(this.handleError(error))
     );
 
-    // 响应拦截器
+    // Superseded responses must not update data or emit current-session events.
     this.instance.interceptors.response.use(
       (response) => {
+        if (!this.isCurrentRequest(response.config)) {
+          throw new axios.CanceledError('Connection changed during request', response.config);
+        }
         const headers = response.headers as Record<string, string | undefined>;
         const cpaVersion = this.readHeader(headers, CPA_VERSION_HEADER_KEYS);
         const cpaBuildDate = this.readHeader(headers, CPA_BUILD_DATE_HEADER_KEYS);
@@ -137,7 +155,7 @@ class ApiClient {
         const buildDate = cpaBuildDate || this.readHeader(headers, BUILD_DATE_HEADER_KEYS);
         const supportsPlugin = this.readBooleanHeader(headers, CPA_SUPPORT_PLUGIN_HEADER_KEYS);
 
-        // 触发版本更新事件（后续通过 store 处理）
+        // Stores handle backend version and capability events.
         if (version || buildDate) {
           window.dispatchEvent(
             new CustomEvent('server-version-update', {
@@ -160,10 +178,13 @@ class ApiClient {
   }
 
   /**
-   * 错误处理
+   * Normalize request errors.
    */
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
+      if (error.config && !this.isCurrentRequest(error.config)) {
+        return new axios.CanceledError('Connection changed during request', error.config);
+      }
       const responseData: unknown = error.response?.data;
       const parsedError = parseApiErrorResponse(responseData, error.message);
       const apiError = new Error(parsedError.message) as ApiError;
@@ -174,7 +195,7 @@ class ApiClient {
       apiError.details = responseData;
       apiError.data = responseData;
 
-      // 401 未授权 - 触发登出事件
+      // A current-connection 401 triggers logout.
       if (error.response?.status === 401) {
         window.dispatchEvent(new Event('unauthorized'));
       }
@@ -194,70 +215,74 @@ class ApiClient {
   }
 
   /**
-   * GET 请求
+   * Read management data.
    */
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get<T>(url, config);
+    const response = await this.instance.get<T>(url, this.scopeRequest(config));
     return response.data;
   }
 
   /**
-   * POST 请求
+   * Create management data.
    */
   async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.post<T>(url, data, config);
+    const response = await this.instance.post<T>(url, data, this.scopeRequest(config));
     return response.data;
   }
 
   /**
-   * PUT 请求
+   * Replace management data.
    */
   async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.put<T>(url, data, config);
+    const response = await this.instance.put<T>(url, data, this.scopeRequest(config));
     return response.data;
   }
 
   /**
-   * PATCH 请求
+   * Update management data.
    */
   async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.patch<T>(url, data, config);
+    const response = await this.instance.patch<T>(url, data, this.scopeRequest(config));
     return response.data;
   }
 
   /**
-   * DELETE 请求
+   * Delete management data.
    */
   async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.delete<T>(url, config);
+    const response = await this.instance.delete<T>(url, this.scopeRequest(config));
     return response.data;
   }
 
   /**
-   * 获取原始响应（用于下载等场景）
+   * Read the complete response, including downloads.
    */
   async getRaw(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
-    return this.instance.get(url, config);
+    return this.instance.get(url, this.scopeRequest(config));
   }
 
   /**
-   * 发送 FormData
+   * Upload form data.
    */
   async postForm<T = unknown>(
     url: string,
     formData: FormData,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    const response = await this.instance.post<T>(url, formData, {
-      ...config,
-      headers: {
-        ...(config?.headers || {}),
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await this.instance.post<T>(
+      url,
+      formData,
+      this.scopeRequest({
+        ...config,
+        headers: {
+          ...(config?.headers || {}),
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+    );
     return response.data;
   }
 }
 
-// 导出单例
+// Shared client instance.
 export const apiClient = new ApiClient();
