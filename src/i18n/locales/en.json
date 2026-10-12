@@ -582,7 +582,6 @@
     "refresh_button": "Refresh Quota",
     "fetch_all": "Fetch All",
     "usage_label": "Usage",
-    "remaining_amount": "Remaining {{amount}}",
     "expires_at": "Expires {{time}}",
     "org_resource_remaining": "Org resource remaining",
     "quota_exceeded": "Quota exceeded",

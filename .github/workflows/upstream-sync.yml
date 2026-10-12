@@ -1,24 +1,13 @@
 name: Upstream Sync
 
-# Keeps this fork synced with
-# router-for-me/Cli-Proxy-API-Management-Center while preserving fork-specific
-# dashboard changes. Clean merges that pass the full verification gate fast-forward main.
-# Conflicts or gate failures update a single tracking issue.
-
 on:
   schedule:
     - cron: '27 4 * * *'
   workflow_dispatch:
-    inputs:
-      force_pr:
-        description: 'Always open a PR even on clean merge'
-        required: false
-        default: 'false'
 
 permissions:
-  contents: write
+  contents: read
   issues: write
-  pull-requests: write
 
 concurrency:
   group: upstream-sync
@@ -27,8 +16,6 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   TRACKING_ISSUE_LABEL: upstream-sync-blocked
-  PR_LABEL: upstream-sync
-  FORCE_PR: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_pr == 'true' && 'true' || 'false' }}
 
 jobs:
   sync:
@@ -37,6 +24,7 @@ jobs:
       - name: Checkout fork
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -44,37 +32,6 @@ jobs:
         run: |
           git config user.name "cpamc-fork-sync[bot]"
           git config user.email "cpamc-fork-sync@users.noreply.github.com"
-
-      - name: Supersede prior sync PRs and stale branches
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set +e
-          OPEN_PRS=$(gh pr list \
-            --repo "${{ github.repository }}" \
-            --state open \
-            --search 'in:title upstream-sync' \
-            --json number,headRefName \
-            --jq '.[] | "\(.number) \(.headRefName)"' || true)
-          if [ -n "${OPEN_PRS}" ]; then
-            echo "${OPEN_PRS}" | while read -r NUM BRANCH; do
-              [ -z "${NUM}" ] && continue
-              gh pr close "${NUM}" --repo "${{ github.repository }}" \
-                --comment "Superseded by upcoming upstream-sync run." || true
-              if [ -n "${BRANCH}" ]; then
-                git push origin --delete "${BRANCH}" 2>/dev/null || true
-              fi
-            done
-          fi
-
-          git ls-remote --heads origin 'upstream-sync/*' \
-            | awk '{print $2}' \
-            | sed 's|refs/heads/||' \
-            | while read -r BR; do
-                [ -z "${BR}" ] && continue
-                git push origin --delete "${BR}" 2>/dev/null || true
-              done
-          set -e
 
       - name: Add upstream remote
         run: git remote add upstream https://github.com/router-for-me/Cli-Proxy-API-Management-Center.git
@@ -135,24 +92,9 @@ jobs:
         if: steps.check.outputs.has_changes == 'true'
         id: branch
         run: |
-          BRANCH="upstream-sync/$(date -u +%Y%m%d-%H%M)"
+          BRANCH="upstream-sync/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
           git checkout -b "${BRANCH}"
-          set +e
-          PUSH_LOG=$(mktemp)
-          git push origin "${BRANCH}" 2>&1 | tee "${PUSH_LOG}"
-          PUSH_EXIT=${PIPESTATUS[0]}
-          if [ "${PUSH_EXIT}" -ne 0 ]; then
-            echo "initial_push_passed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "initial_push_passed=true" >> "$GITHUB_OUTPUT"
-          fi
-          {
-            echo 'INITIAL_BRANCH_PUSH_TAIL<<EOF'
-            tail -n 60 "${PUSH_LOG}"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-          exit 0
 
       - name: Merge upstream
         if: steps.check.outputs.has_changes == 'true'
@@ -227,124 +169,38 @@ jobs:
           } >> "$GITHUB_ENV"
           set -e
 
-      - name: Push sync branch
-        id: branch_push
-        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true'
-        run: |
-          set +e
-          PUSH_LOG=$(mktemp)
-          git push origin "${{ steps.branch.outputs.name }}" 2>&1 | tee "${PUSH_LOG}"
-          PUSH_EXIT=${PIPESTATUS[0]}
-          if [ "${PUSH_EXIT}" -ne 0 ]; then
-            echo "passed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-          fi
-          {
-            echo 'BRANCH_PUSH_TAIL<<EOF'
-            tail -n 60 "${PUSH_LOG}"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-          exit 0
-
-      - name: Fast-forward main
-        id: ffwd
-        if: |
-          steps.check.outputs.has_changes == 'true' &&
-          steps.merge.outputs.passed == 'true' &&
-          steps.gate.outputs.passed == 'true' &&
-          steps.branch_push.outputs.passed == 'true' &&
-          env.FORCE_PR != 'true'
-        run: |
-          git checkout main
-          git merge --ff-only "${{ steps.branch.outputs.name }}"
-          set +e
-          PUSH_LOG=$(mktemp)
-          git push origin main 2>&1 | tee "${PUSH_LOG}"
-          PUSH_EXIT=${PIPESTATUS[0]}
-          if [ "${PUSH_EXIT}" -ne 0 ]; then
-            echo "push_passed=false" >> "$GITHUB_OUTPUT"
-            echo "did_ff=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "push_passed=true" >> "$GITHUB_OUTPUT"
-            echo "did_ff=true" >> "$GITHUB_OUTPUT"
-            git push origin --delete "${{ steps.branch.outputs.name }}" || true
-          fi
-          {
-            echo 'MAIN_PUSH_TAIL<<EOF'
-            tail -n 60 "${PUSH_LOG}"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-          exit 0
-
-      - name: Close stale tracking issue after fast-forward
-        if: steps.ffwd.outputs.did_ff == 'true'
+      - name: Prepare pipeline handoff
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_HEAD: ${{ steps.check.outputs.local }}
+        run: git bundle create upstream-sync.bundle HEAD "^${BASE_HEAD}"
+
+      - name: Upload verified integration history
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-sync-${{ github.run_id }}-${{ github.run_attempt }}
+          path: upstream-sync.bundle
+          if-no-files-found: error
+
+      - name: Describe pipeline handoff
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
         run: |
-          set +e
-          OPEN_ISSUES=$(gh issue list \
-            --repo "${{ github.repository }}" \
-            --state open \
-            --label "${TRACKING_ISSUE_LABEL}" \
-            --json number \
-            --jq '.[].number' || true)
-          for n in ${OPEN_ISSUES}; do
-            gh issue close "${n}" --repo "${{ github.repository }}" \
-              --comment "Resolved by automated fast-forward to upstream ${{ steps.check.outputs.upstream_head }}." || true
-          done
-          set -e
+          {
+            echo 'Upstream integration passed the frozen install and Bun test/lint/build suite.'
+            echo "Integration HEAD: $(git rev-parse HEAD)"
+            echo 'Download the Git bundle artifact and import HEAD onto a local feature branch.'
+            echo 'Submit that branch through the real no-mistakes pipeline to complete review, test, and document evidence for its current head before opening a PR.'
+            echo 'This workflow prepares integration history; pipeline validation and publication remain pending.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Open PR when forced
-        if: |
-          steps.check.outputs.has_changes == 'true' &&
-          steps.merge.outputs.passed == 'true' &&
-          steps.branch_push.outputs.passed == 'true' &&
-          env.FORCE_PR == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GATE_PASSED: ${{ steps.gate.outputs.passed }}
-          REPOSITORY: ${{ github.repository }}
-          SYNC_BRANCH: ${{ steps.branch.outputs.name }}
-          UPSTREAM_HEAD: ${{ steps.check.outputs.upstream_head }}
-          UPSTREAM_TAG: ${{ steps.check.outputs.upstream_tag }}
-        run: |
-          gh label create "${PR_LABEL}" \
-            --color "0E8A16" \
-            --description "Automated upstream sync PR." \
-            --repo "${REPOSITORY}" 2>/dev/null || true
-
-          TITLE="chore(upstream-sync): pull dashboard upstream"
-          if [ "${GATE_PASSED}" = "true" ]; then
-            VALIDATION=":white_check_mark: Passed <code>bun install --frozen-lockfile</code> and <code>bun run verify</code>."
-          else
-            TITLE="${TITLE} (validation failed)"
-            VALIDATION=":x: **FAILED** <code>bun install --frozen-lockfile</code> or <code>bun run verify</code>; review the workflow gate log before merging."
-          fi
-          BODY=$(printf '## Upstream sync\n\n- Upstream HEAD: <code>%s</code>\n- Upstream tag: <code>%s</code>\n\n### Validation\n\n%s\n' \
-            "${UPSTREAM_HEAD}" \
-            "${UPSTREAM_TAG}" \
-            "${VALIDATION}")
-          PR_URL=$(gh pr create \
-            --base main \
-            --head "${SYNC_BRANCH}" \
-            --title "${TITLE}" \
-            --body "${BODY}")
-          echo "${PR_URL}"
-          PR_NUM=$(echo "${PR_URL}" | grep -oE '/pull/[0-9]+' | grep -oE '[0-9]+$' || true)
-          if [ -n "${PR_NUM}" ]; then
-            gh pr edit "${PR_NUM}" --add-label "${PR_LABEL}" 2>/dev/null || true
-          fi
-
-      - name: Update tracking issue on conflict, gate, or push failure
+      - name: Update tracking issue on conflict or gate failure
         if: |
           !cancelled() &&
           steps.check.outputs.has_changes == 'true' &&
           (
             steps.merge.outputs.passed != 'true' ||
-            steps.gate.outputs.passed == 'false' ||
-            steps.branch_push.outputs.passed == 'false' ||
-            steps.ffwd.outputs.push_passed == 'false'
+            steps.gate.outputs.passed == 'false'
           )
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -358,13 +214,10 @@ jobs:
           STATUS=""
           [ "${{ steps.merge.outputs.passed }}" != "true" ] && STATUS="${STATUS}- :warning: merge conflict or merge failure\n"
           [ "${{ steps.gate.outputs.passed }}" = "false" ] && STATUS="${STATUS}- :x: Bun frozen install or full \`bun run verify\` gate failed\n"
-          [ "${{ steps.branch.outputs.initial_push_passed }}" = "false" ] && STATUS="${STATUS}- :x: initial sync branch push failed\n"
-          [ "${{ steps.branch_push.outputs.passed }}" = "false" ] && STATUS="${STATUS}- :x: merged sync branch push failed\n"
-          [ "${{ steps.ffwd.outputs.push_passed }}" = "false" ] && STATUS="${STATUS}- :x: main push failed; remote main was not advanced\n"
 
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           BODY=$(cat <<EOF
-          Automated upstream sync is blocked. This issue is the single tracking place and will be auto-closed after a later sync succeeds.
+          Automated upstream sync is blocked. This issue is the single tracking place and will be auto-closed once main contains the upstream commits after pipeline validation and merge.
 
           **Latest blocked attempt** ($(date -u +%Y-%m-%dT%H:%M:%SZ))
 
@@ -400,29 +253,6 @@ jobs:
 
           </details>
 
-          <details><summary>Initial branch push tail</summary>
-
-          \`\`\`
-          ${INITIAL_BRANCH_PUSH_TAIL:-<not attempted or no output captured>}
-          \`\`\`
-
-          </details>
-
-          <details><summary>Merged branch push tail</summary>
-
-          \`\`\`
-          ${BRANCH_PUSH_TAIL:-<not attempted or no output captured>}
-          \`\`\`
-
-          </details>
-
-          <details><summary>Main push tail</summary>
-
-          \`\`\`
-          ${MAIN_PUSH_TAIL:-<not attempted or no output captured>}
-          \`\`\`
-
-          </details>
           EOF
           )
 

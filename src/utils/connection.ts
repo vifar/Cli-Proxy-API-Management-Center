@@ -18,8 +18,6 @@ export const computeApiUrl = (base: string): string => {
 };
 
 const DASHBOARD_DOCUMENT_FILE = /^(?:management|index)\.html?$/i;
-const STATIC_ASSET_FILE =
-  /\.(?:css|[cm]?js|json|map|svg|png|jpe?g|gif|webp|avif|ico|wasm|txt|xml|woff2?|ttf|eot)$/i;
 
 export const resolvePanelBasePath = (pathname: string): string => {
   const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -30,12 +28,7 @@ export const resolvePanelBasePath = (pathname: string): string => {
 
   const lastSlash = withoutTrailingSlash.lastIndexOf('/');
   const lastSegment = withoutTrailingSlash.slice(lastSlash + 1);
-  const parentPath = withoutTrailingSlash.slice(0, lastSlash);
-  const isKnownStaticAsset = /(?:^|\/)(?:assets|static)$/.test(parentPath) &&
-    STATIC_ASSET_FILE.test(lastSegment);
-  // Arbitrary dotted segments are ambiguous and therefore treated as mounts.
-  // Strip only dashboard document names or files under explicit asset folders.
-  if (DASHBOARD_DOCUMENT_FILE.test(lastSegment) || isKnownStaticAsset) {
+  if (DASHBOARD_DOCUMENT_FILE.test(lastSegment)) {
     return withoutTrailingSlash.slice(0, lastSlash).replace(/\/+$/, '');
   }
 

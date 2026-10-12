@@ -357,17 +357,14 @@ export interface KimiQuotaState {
 }
 
 export interface QoderUsageSnapshot {
-  used?: number | string;
-  total?: number | string;
-  remaining?: number | string;
-  percentage?: number | string;
-  unit?: string;
-  is_quota_exceeded?: boolean;
-  isQuotaExceeded?: boolean;
-  expires_at?: number | string;
-  expiresAt?: number | string;
-  org_resource_remaining?: number | string;
-  orgResourceRemaining?: number | string;
+  used: number;
+  total: number;
+  remaining: number;
+  percentage: number;
+  unit: string;
+  is_quota_exceeded: boolean;
+  expires_at: number;
+  org_resource_remaining?: number;
 }
 
 export interface QoderQuotaState {

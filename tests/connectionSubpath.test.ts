@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeApiBase, resolvePanelBasePath } from '../src/utils/connection';
+import {
+  computeApiUrl,
+  detectApiBaseFromLocation,
+  normalizeApiBase,
+  resolvePanelBasePath,
+} from '../src/utils/connection';
 
 describe('reverse-proxy panel path detection', () => {
   test('preserves extensionless mount paths with and without a trailing slash', () => {
@@ -8,11 +13,9 @@ describe('reverse-proxy panel path detection', () => {
     expect(resolvePanelBasePath('/tenants/acme')).toBe('/tenants/acme');
   });
 
-  test('strips a served filename without misclassifying its directory', () => {
+  test('strips dashboard document names without misclassifying their directory', () => {
     expect(resolvePanelBasePath('/proxy/management.html')).toBe('/proxy');
     expect(resolvePanelBasePath('/proxy/index.htm')).toBe('/proxy');
-    expect(resolvePanelBasePath('/assets/dashboard.js')).toBe('/assets');
-    expect(resolvePanelBasePath('/proxy/static/dashboard.json')).toBe('/proxy/static');
     expect(resolvePanelBasePath('/management.html')).toBe('');
   });
 
@@ -20,6 +23,10 @@ describe('reverse-proxy panel path detection', () => {
     expect(resolvePanelBasePath('/tenant.v1/')).toBe('/tenant.v1');
     expect(resolvePanelBasePath('/tenant.v1')).toBe('/tenant.v1');
     expect(resolvePanelBasePath('/tenant.json')).toBe('/tenant.json');
+    expect(resolvePanelBasePath('/assets/tenant.json')).toBe('/assets/tenant.json');
+    expect(resolvePanelBasePath('/proxy/static/tenant.js')).toBe('/proxy/static/tenant.js');
+    expect(resolvePanelBasePath('/tenant.v1/management.html')).toBe('/tenant.v1');
+    expect(resolvePanelBasePath('/tenant.v1/index.html')).toBe('/tenant.v1');
     expect(resolvePanelBasePath('/proxy/dashboard.js')).toBe('/proxy/dashboard.js');
     expect(resolvePanelBasePath('/groups/acme.prod/')).toBe('/groups/acme.prod');
   });
@@ -28,5 +35,25 @@ describe('reverse-proxy panel path detection', () => {
     expect(normalizeApiBase('https://example.test/proxy/v0/management/')).toBe(
       'https://example.test/proxy'
     );
+  });
+
+  test('page detection preserves dotted mounts for requests and remembered panel identity', () => {
+    const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    try {
+      for (const pathname of ['/tenant.v1', '/tenant.v1/', '/tenant.v1/management.html']) {
+        Object.defineProperty(globalThis, 'window', {
+          configurable: true,
+          value: {
+            location: { protocol: 'https:', hostname: 'example.test', port: '8443', pathname },
+          },
+        });
+        const base = detectApiBaseFromLocation();
+        expect(base).toBe('https://example.test:8443/tenant.v1');
+        expect(computeApiUrl(base)).toBe('https://example.test:8443/tenant.v1/v0/management');
+      }
+    } finally {
+      if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+      else Reflect.deleteProperty(globalThis, 'window');
+    }
   });
 });

@@ -6,11 +6,13 @@ A single-file Web UI (React + TypeScript) for operating and troubleshooting the 
 
 ## Maintained fork
 
-`kaitranntt/Cli-Proxy-API-Management-Center` is maintained as the dashboard release stream for **CLIProxyAPIPlus**. Fork releases publish `management.html` assets that CLIProxyAPIPlus can download and bundle independently from the upstream dashboard.
+`vifar/Cli-Proxy-API-Management-Center` is a personal fork of `router-for-me/Cli-Proxy-API-Management-Center`, preserving useful management UI improvements from the previous CCS fork while following current upstream features and API contracts.
 
-- Clean upstream updates are merged by the `Upstream Sync` workflow after the frozen install and full test/lint/build verification pass.
-- Conflicts, failed gates, or push failures for the merged sync branch or `main` update a single assigned `upstream-sync-blocked` issue.
-- Fork-only release tags use the upstream-compatible `vX.Y.Z-N` suffix pattern when an extra dashboard asset is needed.
+- `Upstream Sync` prepares merge history as a Git bundle artifact after a frozen install and the full Bun test/lint/build suite pass.
+- Import the bundle onto a local feature branch and submit it through the real no-mistakes pipeline before opening a PR. Workflow verification alone does not complete the required review/test/document evidence.
+- Conflicts or failed verification update an assigned `upstream-sync-blocked` issue. Saved branches and open PRs are preserved.
+- Every GitHub Actions job uses the self-hosted King server cpamc pool.
+- Dated planning and evidence documents describe historical work, not verification of the current head.
 
 **Main Project**: https://github.com/router-for-me/CLIProxyAPI  
 **Example URL**: https://remote.router-for.me/  

@@ -580,7 +580,6 @@
     "refresh_button": "重新整理配額",
     "fetch_all": "取得全部",
     "usage_label": "使用量",
-    "remaining_amount": "剩餘 {{amount}}",
     "expires_at": "{{time}} 到期",
     "org_resource_remaining": "組織資源剩餘",
     "quota_exceeded": "配額已用盡",

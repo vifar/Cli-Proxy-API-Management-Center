@@ -6,11 +6,13 @@
 
 ## 维护分支
 
-`kaitranntt/Cli-Proxy-API-Management-Center` 是 **CLIProxyAPIPlus** 的仪表盘发布流。Fork 版本会发布 `management.html` 资源，供 CLIProxyAPIPlus 独立下载和打包。
+`vifar/Cli-Proxy-API-Management-Center` 是 `router-for-me/Cli-Proxy-API-Management-Center` 的个人 fork，在跟进当前上游功能与 API 契约的同时，保留原 CCS fork 中有用的管理界面改进。
 
-- 干净的上游更新会在包管理器门禁和构建通过后由 `Upstream Sync` workflow 合入。
-- 冲突、门禁失败或合并后同步分支/`main` 的推送失败会更新一个已指派的 `upstream-sync-blocked` 跟踪 issue。
-- Fork 自有仪表盘版本使用与上游兼容的 `vX.Y.Z-N` 标签后缀。
+- `Upstream Sync` 在冻结依赖安装及完整 Bun 测试、lint、构建通过后，将合并历史保存为 Git bundle 构件。
+- 将 bundle 导入本地功能分支并通过真实的 no-mistakes 流水线后，再创建 PR。Workflow 验证本身不代表已完成所需的 review/test/document 证据。
+- 冲突或验证失败会更新一个已指派的 `upstream-sync-blocked` 跟踪 issue。保留已有分支与开放 PR。
+- 所有 GitHub Actions job 均使用 King server 的自托管 cpamc runner 池。
+- 带日期的计划与证据文档记录历史工作，不代表当前 head 的验证结果。
 
 **主项目**: https://github.com/router-for-me/CLIProxyAPI  
 **最低版本要求**: ≥ 7.2.147（推荐最新）

@@ -585,7 +585,6 @@
     "refresh_button": "Обновить квоту",
     "fetch_all": "Получить все",
     "usage_label": "Использование",
-    "remaining_amount": "Осталось {{amount}}",
     "expires_at": "Истекает {{time}}",
     "org_resource_remaining": "Остаток ресурса организации",
     "quota_exceeded": "Квота исчерпана",
