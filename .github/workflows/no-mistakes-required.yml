@@ -20,4 +20,4 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Verify completed pipeline for the current PR head
-        uses: kunchenguid/no-mistakes/.github/actions/require-no-mistakes@f6441c96c352a18b9cadcaef6b6c7017e9ac3970 # v1.80.1
+        uses: vifar/no-mistakes/.github/actions/require-no-mistakes@43617132cf4d0fb1ced04cc7eda6b0b2bb9d25eb

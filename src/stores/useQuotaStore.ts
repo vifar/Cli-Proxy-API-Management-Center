@@ -12,6 +12,7 @@ import type {
   KimiQuotaState,
   MetaQuotaState,
   QoderQuotaState,
+  PluginQuotaState,
   XaiQuotaState,
 } from '@/types';
 
@@ -27,6 +28,7 @@ interface QuotaStoreState {
   kimiQuota: Record<string, KimiQuotaState>;
   metaQuota: Record<string, MetaQuotaState>;
   qoderQuota: Record<string, QoderQuotaState>;
+  pluginQuota: Record<string, PluginQuotaState>;
   xaiQuota: Record<string, XaiQuotaState>;
   setAntigravityQuota: (updater: QuotaUpdater<Record<string, AntigravityQuotaState>>) => void;
   setClaudeQuota: (updater: QuotaUpdater<Record<string, ClaudeQuotaState>>) => void;
@@ -35,6 +37,7 @@ interface QuotaStoreState {
   setKimiQuota: (updater: QuotaUpdater<Record<string, KimiQuotaState>>) => void;
   setMetaQuota: (updater: QuotaUpdater<Record<string, MetaQuotaState>>) => void;
   setQoderQuota: (updater: QuotaUpdater<Record<string, QoderQuotaState>>) => void;
+  setPluginQuota: (updater: QuotaUpdater<Record<string, PluginQuotaState>>) => void;
   setXaiQuota: (updater: QuotaUpdater<Record<string, XaiQuotaState>>) => void;
   clearQuotaCache: (names?: string[]) => void;
 }
@@ -56,6 +59,7 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
   kimiQuota: {},
   metaQuota: {},
   qoderQuota: {},
+  pluginQuota: {},
   xaiQuota: {},
   setAntigravityQuota: (updater) =>
     set((state) => ({
@@ -82,6 +86,10 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
   setQoderQuota: (updater) =>
     set((state) => ({
       qoderQuota: resolveUpdater(updater, state.qoderQuota),
+    })),
+  setPluginQuota: (updater) =>
+    set((state) => ({
+      pluginQuota: resolveUpdater(updater, state.pluginQuota),
     })),
   setXaiQuota: (updater) =>
     set((state) => ({
@@ -114,6 +122,7 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
           kimiQuota: omitNames(state.kimiQuota),
           metaQuota: omitNames(state.metaQuota),
           qoderQuota: omitNames(state.qoderQuota),
+          pluginQuota: omitNames(state.pluginQuota),
           xaiQuota: omitNames(state.xaiQuota),
         };
       }
@@ -127,6 +136,7 @@ export const useQuotaStore = create<QuotaStoreState>((set) => ({
         kimiQuota: {},
         metaQuota: {},
         qoderQuota: {},
+        pluginQuota: {},
         xaiQuota: {},
       };
     }),

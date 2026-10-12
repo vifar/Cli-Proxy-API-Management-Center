@@ -117,7 +117,7 @@ export function collectQuotaRowInstants(
     return [{ rowId: XAI_WEEKLY_ROW_ID, atMs: billing.resetAtMs, kind: 'window' }];
   }
 
-  if (provider === 'antigravity') {
+  if (provider === 'antigravity' || provider === 'plugin') {
     // Buckets live inside groups; the grouping is a display concern here.
     const buckets = ((quota as { groups?: { buckets?: WindowLike[] }[] }).groups ?? []).flatMap(
       (group) => group.buckets ?? []
@@ -127,6 +127,11 @@ export function collectQuotaRowInstants(
 
   if (provider === 'kimi') {
     return collectRows((quota as { rows?: WindowLike[] }).rows ?? [], 'row');
+  }
+
+  if (provider === 'qoder') {
+    const atMs = (quota as { usage?: { expires_at?: number } | null }).usage?.expires_at;
+    return isUsableMs(atMs) && atMs > 0 ? [{ rowId: 'qoder:usage', atMs, kind: 'window' }] : [];
   }
 
   if (provider === 'meta') {

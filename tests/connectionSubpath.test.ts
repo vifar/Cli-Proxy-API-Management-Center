@@ -32,7 +32,7 @@ describe('reverse-proxy panel path detection', () => {
   });
 
   test('keeps normalized management paths stable', () => {
-    expect(normalizeApiBase('https://example.test/proxy/v0/management/')).toBe(
+    expect(normalizeApiBase('https://example.test/proxy/v8/management/')).toBe(
       'https://example.test/proxy'
     );
   });
@@ -49,7 +49,7 @@ describe('reverse-proxy panel path detection', () => {
         });
         const base = detectApiBaseFromLocation();
         expect(base).toBe('https://example.test:8443/tenant.v1');
-        expect(computeApiUrl(base)).toBe('https://example.test:8443/tenant.v1/v0/management');
+        expect(computeApiUrl(base)).toBe('https://example.test:8443/tenant.v1/v8/management');
       }
     } finally {
       if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);

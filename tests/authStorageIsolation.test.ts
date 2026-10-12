@@ -54,15 +54,9 @@ describe('auth storage isolation', () => {
     expect(tenantA.getItem(STORAGE_KEY_AUTH)).not.toContain('key-b');
     expect(tenantB.getItem(STORAGE_KEY_AUTH)).toContain('key-b');
     expect(
-      getScopedAuthStorageKey(
-        'https://example.test/tenant-a',
-        'https://example.test/backend'
-      )
+      getScopedAuthStorageKey('https://example.test/tenant-a', 'https://example.test/backend')
     ).not.toBe(
-      getScopedAuthStorageKey(
-        'https://example.test/tenant-b',
-        'https://example.test/backend'
-      )
+      getScopedAuthStorageKey('https://example.test/tenant-b', 'https://example.test/backend')
     );
     expect(getAuthLoginStateStorageKey('https://example.test/tenant-a')).not.toBe(
       getAuthLoginStateStorageKey('https://example.test/tenant-b')
@@ -82,14 +76,18 @@ describe('auth storage isolation', () => {
     expect(restored).toBeNull();
     expect(obfuscatedStorage.getItem(STORAGE_KEY_AUTH)).not.toBeNull();
     expect(localStorage.getItem('isLoggedIn')).toBe('true');
-    expect(localStorage.getItem(getAuthLoginStateStorageKey('https://example.test/proxy'))).toBeNull();
-    expect(obfuscatedStorage.getItem(getAuthSelectionStorageKey('https://example.test/proxy'))).toBeNull();
+    expect(
+      localStorage.getItem(getAuthLoginStateStorageKey('https://example.test/proxy'))
+    ).toBeNull();
+    expect(
+      obfuscatedStorage.getItem(getAuthSelectionStorageKey('https://example.test/proxy'))
+    ).toBeNull();
   });
 
   test('migrates legacy credentials only when the normalized panel identity is exact', () => {
     obfuscatedStorage.setItem(
       STORAGE_KEY_AUTH,
-      JSON.parse(envelope('https://example.test/proxy/v0/management/', 'legacy-key'))
+      JSON.parse(envelope('https://example.test/proxy/v8/management/', 'legacy-key'))
     );
     localStorage.setItem('isLoggedIn', 'true');
     const storage = createScopedAuthStorage(() => 'https://example.test/proxy');
@@ -106,12 +104,11 @@ describe('auth storage isolation', () => {
   });
 
   test('does not auto-use an unrelated legacy tenant or origin', () => {
-    expect(resolveLegacyAuthApiBase('https://example.test', 'https://example.test/proxy')).toBeNull();
     expect(
-      resolveLegacyAuthApiBase(
-        'https://example.test/tenant-a',
-        'https://example.test/tenant-b'
-      )
+      resolveLegacyAuthApiBase('https://example.test', 'https://example.test/proxy')
+    ).toBeNull();
+    expect(
+      resolveLegacyAuthApiBase('https://example.test/tenant-a', 'https://example.test/tenant-b')
     ).toBeNull();
     expect(
       resolveLegacyAuthApiBase('https://other.test', 'https://example.test/tenant-b')

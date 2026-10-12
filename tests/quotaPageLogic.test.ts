@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { QUOTA_PAGE_SIZE } from '@/features/quota/constants';
+import { nextRecoveryMs } from '@/features/quota/resetSchedule';
 import {
   buildTabCounts,
   canRefreshQuotaAfterList,
@@ -43,8 +44,17 @@ describe('resolveQuotaProviderType', () => {
     expect(resolveQuotaProviderType(file('a', 'grok'))).toBe('xai');
     expect(resolveQuotaProviderType(file('a', 'antigravity'))).toBe('antigravity');
     expect(resolveQuotaProviderType(file('a', 'qoder'))).toBe('qoder');
+    expect(resolveQuotaProviderType(file('a', 'qoder', { supportsQuota: true }))).toBe('qoder');
     expect(resolveQuotaProviderType(file('a', 'gemini'))).toBeNull();
     expect(resolveQuotaProviderType(file('a', 'claude', { disabled: true }))).toBeNull();
+    expect(
+      resolveQuotaProviderType(
+        file('kiro-a.json', 'kiro', { supportsQuota: true, quotaProvider: 'kiro', authIndex: '1' })
+      )
+    ).toBe('plugin');
+    expect(resolveQuotaProviderType(file('kiro-probe.json', 'kiro', { supportsQuota: true }))).toBe(
+      'plugin'
+    );
   });
 });
 
@@ -74,6 +84,7 @@ describe('buildTabCounts', () => {
       devin: 0,
       meta: 0,
       qoder: 0,
+      plugin: 0,
     });
   });
 });
@@ -182,6 +193,31 @@ describe('paginate', () => {
 describe('sortQuotaEntries', () => {
   const entries = classifyQuotaFiles(FILES);
   const byName = (list: QuotaFileEntry[]) => list.map((entry) => entry.file.name);
+
+  test('places Qoder resetting in ten minutes ahead of Codex resetting next week', () => {
+    const now = Date.parse('2026-10-11T12:00:00Z');
+    const input = classifyQuotaFiles([
+      file('codex.json', 'codex'),
+      file('qoder.json', 'qoder'),
+      file('plugin.json', 'custom', { supportsQuota: true }),
+    ]);
+    const quotas = {
+      'codex.json': {
+        status: 'success',
+        windows: [{ id: 'weekly', resetAtMs: Date.parse('2026-10-18T12:00:00Z') }],
+      },
+      'qoder.json': {
+        status: 'success',
+        usage: { expires_at: Date.parse('2026-10-11T12:10:00Z') },
+      },
+      'plugin.json': { status: 'loading' },
+    };
+    const sorted = sortQuotaEntries(input, 'soonest', (entry) =>
+      nextRecoveryMs(entry.type, quotas[entry.file.name as keyof typeof quotas], now)
+    );
+    expect(byName(sorted)).toEqual(['qoder.json', 'codex.json', 'plugin.json']);
+    expect(paginate(sorted, 1, 1).pageItems[0].file.name).toBe('qoder.json');
+  });
 
   /** Recovery instants keyed by file name; anything absent resolves to null. */
   const resolver = (instants: Record<string, number>) => (entry: QuotaFileEntry) =>
