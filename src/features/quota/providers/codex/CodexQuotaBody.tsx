@@ -19,6 +19,7 @@ import { resolveTimeZoneLabel } from '@/utils/time/timezone';
 import { formatDateTimeValue } from '@/utils/format';
 import { useNow } from '@/hooks/useNow';
 import { QuotaMeter } from '../../components/QuotaMeter';
+import { QuotaCreditDetails } from '../../components/QuotaCreditDetails';
 import { QuotaResetLabel } from '../../components/QuotaResetLabel';
 import { collectQuotaRowInstants, pickUrgentRowId, resetCreditRowId } from '../../resetSchedule';
 import type { QuotaBodyProps, QuotaClassMap } from '../../types';
@@ -47,6 +48,16 @@ export function CodexQuotaBody({ quota, classes }: QuotaBodyProps<CodexQuotaStat
   const rateLimitResetCreditsAvailableCount = quota.rateLimitResetCreditsAvailableCount ?? null;
   const rateLimitResetCredits = quota.rateLimitResetCredits ?? [];
   const rateLimitResetCreditsError = quota.rateLimitResetCreditsError ?? '';
+  const credits = quota.credits;
+  const creditBalance = credits?.unlimited
+    ? t('quota_management.credits_unlimited')
+    : credits?.balance !== null && credits?.balance !== undefined
+      ? new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(credits.balance)
+      : credits?.hasCredits === true
+        ? t('quota_management.credits_available')
+        : credits?.hasCredits === false
+          ? t('quota_management.credits_none')
+          : t('quota_management.credits_not_reported');
 
   const getPlanLabel = (pt?: string | null): string | null => {
     const normalized = normalizePlanType(pt);
@@ -82,7 +93,7 @@ export function CodexQuotaBody({ quota, classes }: QuotaBodyProps<CodexQuotaStat
 
   return (
     <>
-      {(planLabel || expiryDisplay || rateLimitResetCreditsAvailableCount !== null) && (
+      {(planLabel || expiryDisplay) && (
         <div className={classes.codexPlan}>
           {planLabel && (
             <span className={classes.codexPlanItem}>
@@ -97,14 +108,6 @@ export function CodexQuotaBody({ quota, classes }: QuotaBodyProps<CodexQuotaStat
               {expiryDisplay.relative && (
                 <span className={classes.quotaResetRelative}>{expiryDisplay.relative}</span>
               )}
-            </span>
-          )}
-          {rateLimitResetCreditsAvailableCount !== null && (
-            <span className={classes.codexPlanItem}>
-              <span className={classes.codexPlanLabel}>{t('codex_quota.reset_credits_label')}</span>
-              <span className={classes.codexPlanValue}>
-                {rateLimitResetCreditsAvailableCount.toString()}
-              </span>
             </span>
           )}
         </div>
@@ -191,6 +194,27 @@ export function CodexQuotaBody({ quota, classes }: QuotaBodyProps<CodexQuotaStat
           );
         })
       )}
+      <QuotaCreditDetails
+        classes={classes}
+        items={[
+          { label: t('codex_quota.credit_balance'), value: creditBalance },
+          {
+            label: t('codex_quota.reset_credits_label'),
+            value:
+              rateLimitResetCreditsAvailableCount === null
+                ? t('quota_management.credits_not_reported')
+                : rateLimitResetCreditsAvailableCount.toLocaleString(locale),
+            hint:
+              quota.rateLimitResetCreditsApplicableAvailableCount != null &&
+              quota.rateLimitResetCreditsApplicableAvailableCount !==
+                rateLimitResetCreditsAvailableCount
+                ? t('codex_quota.reset_credits_applicable', {
+                    count: quota.rateLimitResetCreditsApplicableAvailableCount,
+                  })
+                : undefined,
+          },
+        ]}
+      />
     </>
   );
 }

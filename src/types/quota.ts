@@ -77,6 +77,7 @@ export interface CodexRateLimitResetCredit {
 }
 
 export interface CodexUsagePayload {
+  credits?: unknown;
   plan_type?: string;
   planType?: string;
   rate_limit?: CodexRateLimitInfo | null;
@@ -237,12 +238,20 @@ export interface CodexQuotaState {
   windows: CodexQuotaWindow[];
   planType?: string | null;
   subscriptionActiveUntil?: string | number | null;
+  credits?: CodexCreditBalance | null;
   rateLimitResetCreditsAvailableCount?: number | null;
   rateLimitResetCreditsApplicableAvailableCount?: number | null;
   rateLimitResetCredits?: CodexRateLimitResetCredit[];
   rateLimitResetCreditsError?: string;
   error?: string;
   errorStatus?: number;
+}
+
+/** Credit units returned by Codex, independent of earned manual reset credits. */
+export interface CodexCreditBalance {
+  hasCredits: boolean | null;
+  unlimited: boolean | null;
+  balance: number | null;
 }
 
 export interface DevinQuotaWindow {

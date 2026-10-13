@@ -22,6 +22,7 @@ const result = (statusCode: number, body: unknown = null): ApiCallResult => ({
 });
 
 const CURRENT_CODEX_USAGE_PAYLOAD: CodexUsagePayload = {
+  credits: { has_credits: true, unlimited: false, balance: '12345.6789000000' },
   plan_type: 'pro',
   rate_limit: {
     allowed: true,
@@ -134,6 +135,8 @@ describe('Codex live subscription renewal', () => {
     );
 
     expect(quota.subscriptionActiveUntil).toBe('2026-10-03T13:27:01Z');
+    expect(quota.credits).toEqual({ hasCredits: true, unlimited: false, balance: 12345.6789 });
+    expect(CODEX_CONFIG.buildSuccessState(quota).credits).toEqual(quota.credits);
     const subscriptionRequest = requests.find((request) =>
       request.url.startsWith(CODEX_SUBSCRIPTION_URL)
     );

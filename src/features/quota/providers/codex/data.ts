@@ -12,6 +12,7 @@ import type {
   CodexUsageWindow,
   CodexQuotaWindow,
   CodexUsagePayload,
+  CodexCreditBalance,
 } from '@/types';
 import { apiCallApi, getApiCallErrorMessage } from '@/services/api';
 import {
@@ -24,6 +25,7 @@ import {
   normalizePlanType,
   normalizeStringValue,
   normalizeCodexResetCreditsPayload,
+  normalizeCodexCreditBalance,
   parseCodexUsagePayload,
   parseOffsetSecondsToMs,
   periodHoursFromSeconds,
@@ -49,6 +51,7 @@ type CodexResetCreditsData = {
 };
 
 export type CodexQuotaData = {
+  credits: CodexCreditBalance | null;
   planType: string | null;
   subscriptionActiveUntil: string | number | null;
   rateLimitResetCreditsAvailableCount: number | null;
@@ -444,6 +447,7 @@ const fetchCodexQuota = async (file: AuthFileItem, t: TFunction): Promise<CodexQ
   const subscriptionActiveUntil = liveSubscriptionActiveUntil ?? subscriptionActiveUntilFromFile;
   const windows = buildCodexQuotaWindows(payload, t);
   return {
+    credits: normalizeCodexCreditBalance(payload.credits),
     planType,
     subscriptionActiveUntil,
     rateLimitResetCreditsAvailableCount,
@@ -515,6 +519,7 @@ export const CODEX_CONFIG: QuotaProviderData<CodexQuotaState, CodexQuotaData> = 
   }),
   buildSuccessState: (data) => ({
     status: 'success',
+    credits: data.credits,
     windows: data.windows,
     planType: data.planType,
     subscriptionActiveUntil: data.subscriptionActiveUntil,

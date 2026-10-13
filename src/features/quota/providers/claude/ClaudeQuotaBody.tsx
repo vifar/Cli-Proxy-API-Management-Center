@@ -5,9 +5,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ClaudeQuotaState } from '@/types';
-import { buildResetDisplay } from '@/utils/quota';
+import { buildResetDisplay, formatCreditBudget } from '@/utils/quota';
 import { useNow } from '@/hooks/useNow';
 import { QuotaMeter } from '../../components/QuotaMeter';
+import { QuotaCreditDetails } from '../../components/QuotaCreditDetails';
 import { QuotaResetLabel } from '../../components/QuotaResetLabel';
 import { collectQuotaRowInstants, pickUrgentRowId } from '../../resetSchedule';
 import type { QuotaBodyProps } from '../../types';
@@ -22,6 +23,11 @@ export function ClaudeQuotaBody({ quota, classes }: QuotaBodyProps<ClaudeQuotaSt
   const windows = quota.windows ?? [];
   const extraUsage = quota.extraUsage ?? null;
   const planType = quota.planType ?? null;
+  const budget = formatCreditBudget(
+    extraUsage?.monthly_limit,
+    extraUsage?.used_credits,
+    i18n.resolvedLanguage
+  );
 
   return (
     <>
@@ -29,14 +35,6 @@ export function ClaudeQuotaBody({ quota, classes }: QuotaBodyProps<ClaudeQuotaSt
         <div className={classes.codexPlan}>
           <span className={classes.codexPlanLabel}>{t('claude_quota.plan_label')}</span>
           <span className={classes.codexPlanValue}>{t(`claude_quota.${planType}`)}</span>
-        </div>
-      )}
-      {extraUsage && extraUsage.is_enabled && (
-        <div className={classes.codexPlan}>
-          <span className={classes.codexPlanLabel}>{t('claude_quota.extra_usage_label')}</span>
-          <span className={classes.codexPlanValue}>
-            {`$${(extraUsage.used_credits / 100).toFixed(2)} / $${(extraUsage.monthly_limit / 100).toFixed(2)}`}
-          </span>
         </div>
       )}
       {windows.length === 0 ? (
@@ -78,6 +76,27 @@ export function ClaudeQuotaBody({ quota, classes }: QuotaBodyProps<ClaudeQuotaSt
           );
         })
       )}
+      <QuotaCreditDetails
+        classes={classes}
+        items={[
+          {
+            label: t('claude_quota.extra_usage_label'),
+            value:
+              extraUsage?.is_enabled === false
+                ? t('quota_management.credits_disabled')
+                : budget.remaining !== null
+                  ? t('quota_management.credits_remaining', { amount: budget.remaining })
+                  : t('quota_management.credits_not_reported'),
+            hint:
+              extraUsage?.is_enabled && (budget.used !== null || budget.limit !== null)
+                ? t('quota_management.credits_budget', {
+                    used: budget.used ?? t('quota_management.credits_not_reported'),
+                    limit: budget.limit ?? t('quota_management.credits_not_reported'),
+                  })
+                : undefined,
+          },
+        ]}
+      />
     </>
   );
 }

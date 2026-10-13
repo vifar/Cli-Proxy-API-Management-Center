@@ -1,0 +1,66 @@
+import { describe, expect, test } from 'bun:test';
+import {
+  blockedUntilMs,
+  collectLedgerLimits,
+  formatCompactDuration,
+  pickPoolLimit,
+} from '../src/features/quota/ledgerLimits';
+
+const HOUR = 60 * 60 * 1000;
+const NOW = Date.UTC(2026, 9, 13, 12);
+
+const claudeQuota = {
+  status: 'success',
+  windows: [
+    { id: 'five-hour', label: '5-hour', usedPercent: 0, resetAtMs: null, periodHours: 5 },
+    {
+      id: 'seven-day',
+      label: '7-day',
+      usedPercent: 100,
+      resetAtMs: NOW + 9 * HOUR,
+      periodHours: 168,
+    },
+    {
+      id: 'seven-day-fable',
+      label: 'Fable',
+      usedPercent: 6,
+      resetAtMs: NOW + 9 * HOUR,
+      periodHours: 168,
+    },
+  ],
+};
+
+describe('collectLedgerLimits', () => {
+  test('puts the account window first and converts used to remaining', () => {
+    const limits = collectLedgerLimits('claude', claudeQuota);
+    expect(limits.map((limit) => limit.id)).toEqual(['seven-day', 'five-hour', 'seven-day-fable']);
+    expect(limits.map((limit) => limit.remaining)).toEqual([0, 100, 94]);
+  });
+
+  test('returns nothing until the quota has loaded', () => {
+    expect(collectLedgerLimits('claude', { status: 'loading' })).toEqual([]);
+  });
+
+  test('pool limit prefers the account-wide window', () => {
+    expect(pickPoolLimit(collectLedgerLimits('claude', claudeQuota))?.id).toBe('seven-day');
+  });
+});
+
+describe('blockedUntilMs', () => {
+  test('waits for the latest exhausted limit', () => {
+    const limits = collectLedgerLimits('claude', claudeQuota);
+    expect(blockedUntilMs(limits, NOW)).toBe(NOW + 9 * HOUR);
+  });
+
+  test('null when nothing is exhausted', () => {
+    expect(
+      blockedUntilMs(collectLedgerLimits('claude', { ...claudeQuota, windows: [] }), NOW)
+    ).toBeNull();
+  });
+});
+
+test('formatCompactDuration', () => {
+  expect(formatCompactDuration(8 * HOUR + 58 * 60_000)).toBe('8h 58m');
+  expect(formatCompactDuration(37 * HOUR)).toBe('1d 13h');
+  expect(formatCompactDuration(30_000)).toBe('1m');
+});

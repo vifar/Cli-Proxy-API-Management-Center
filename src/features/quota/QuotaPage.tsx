@@ -26,6 +26,23 @@ import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
 import { QuotaTimeline } from './components/QuotaTimeline';
+import { QuotaSummary } from './components/QuotaSummary';
+import { QuotaForecast } from './components/QuotaForecast';
+import { QuotaGroupHeader } from './components/QuotaGroupHeader';
+import { QuotaLedgerRow } from './components/QuotaLedgerRow';
+import { collectLedgerLimits, pickPoolLimit } from './ledgerLimits';
+import {
+  appendPoolSample,
+  estimateDrainFromHistory,
+  estimateDrainFromWindows,
+  readForecastSettings,
+  readPoolHistory,
+  writeForecastSettings,
+  writePoolHistory,
+  type ForecastSettings,
+  type PoolMember,
+} from './quotaForecast';
+import { maskQuotaIdentity } from './ledger';
 import {
   CARD_ENTRANCE_BUDGET_MS,
   QUOTA_PAGE_SIZE,
@@ -47,7 +64,6 @@ import {
 import { nextRecoveryMs } from './resetSchedule';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 import type { QuotaProviderType } from './providers/types';
-import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
 import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
@@ -76,6 +92,8 @@ export function QuotaPage() {
   );
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [layout, setLayout] = useState<'ledger' | 'cards'>('ledger');
+  const [showEmails, setShowEmails] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   // 页头 + tabs 的入场级联（标题 → meta → 动作 → tabs，级差 70ms）
   const revealRef = useRevealGroup<HTMLDivElement>();
@@ -245,7 +263,7 @@ export function QuotaPage() {
   const pendingRefreshRef = useRef<number | null>(null);
   const prevLoadingRef = useRef(loading);
 
-  // 刷新全部：先重取文件列表，待其落定（loading 下降沿）再批量拉当前页额度
+  // Refresh all: reload the file list, then (on the loading falling edge) fetch every credential's quota.
   const handleRefreshAll = useCallback(() => {
     if (disableControls) return;
     pendingRefreshRef.current = sessionGeneration;
@@ -274,21 +292,93 @@ export function QuotaPage() {
         disableControls
       )
     ) {
-      void loadQuota(pageItems);
+      void loadQuota(entries);
     }
-  }, [disableControls, error, filesGeneration, loading, loadQuota, pageItems, sessionGeneration]);
-
-  useDevinQuotaAutoLoad(
-    pageItems,
-    disableControls ||
-      loading ||
-      batchLoading ||
-      Boolean(error) ||
-      filesGeneration !== sessionGeneration,
-    loadQuota
-  );
+  }, [disableControls, error, entries, filesGeneration, loading, loadQuota, sessionGeneration]);
 
   const canUseActions = !disableControls && !loading && filesGeneration === sessionGeneration;
+
+  // Load every credential's quota as soon as the file list lands. Entries that
+  // already have a cached state (loaded, loading, or failed) are left alone, so
+  // returning to the page does not refetch and failures do not retry in a loop.
+  // A call dropped by the batch loader's in-flight guard is retried when
+  // batchLoading falls back to false.
+  useEffect(() => {
+    if (!canUseActions || batchLoading || error) return;
+    const pending = entries.filter((entry) => {
+      if (entry.file.disabled) return false;
+      const status = getQuota(entry)?.status;
+      return !status || status === 'idle';
+    });
+    if (pending.length > 0) void loadQuota(pending);
+  }, [batchLoading, canUseActions, entries, error, getQuota, loadQuota]);
+
+  /* ---------- Pool forecast ---------- */
+
+  const clock = useNow();
+  const [forecastSettings, setForecastSettings] = useState<ForecastSettings>(readForecastSettings);
+  const handleForecastSettings = useCallback((next: ForecastSettings) => {
+    setForecastSettings(next);
+    writeForecastSettings(next);
+  }, []);
+
+  const scopeEntries = useMemo(() => filterEntriesByTab(entries, tab), [entries, tab]);
+  const { poolMembers, poolSettled } = useMemo(() => {
+    const members: PoolMember[] = [];
+    let settled = true;
+    scopeEntries.forEach((entry) => {
+      const quota = getQuota(entry);
+      const status = quota?.status;
+      if (!entry.file.disabled && (!status || status === 'idle' || status === 'loading')) {
+        settled = false;
+      }
+      const limit = pickPoolLimit(collectLedgerLimits(entry.type, quota));
+      if (!limit || limit.remaining === null) return;
+      members.push({
+        id: `${entry.type}:${getQuotaCacheKey(entry.file)}`,
+        remaining: limit.remaining,
+        resetAtMs: limit.resetAtMs,
+        periodHours: limit.periodHours,
+      });
+    });
+    return { poolMembers: members, poolSettled: settled };
+  }, [scopeEntries, getQuota]);
+
+  const poolTotal = poolMembers.reduce((sum, member) => sum + member.remaining, 0);
+  const poolCapacity = poolMembers.length * 100;
+  const [historyVersion, setHistoryVersion] = useState(0);
+  // historyVersion re-reads storage after this page appends a sample.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const poolHistory = useMemo(() => readPoolHistory(tab), [tab, historyVersion]);
+
+  // Sample the pool once every scoped credential has settled, so a half-loaded
+  // page never records a fake drop.
+  useEffect(() => {
+    if (!poolSettled || poolCapacity === 0) return;
+    const next = appendPoolSample(readPoolHistory(tab), {
+      t: Date.now(),
+      remaining: poolTotal,
+      capacity: poolCapacity,
+    });
+    writePoolHistory(tab, next);
+    setHistoryVersion((value) => value + 1);
+  }, [poolSettled, poolTotal, poolCapacity, tab]);
+
+  const historyRate = estimateDrainFromHistory(
+    poolHistory,
+    clock,
+    forecastSettings.lookbackHours * 60 * 60 * 1000
+  );
+  const windowsRate = historyRate === null ? estimateDrainFromWindows(poolMembers, clock) : null;
+  const forecastRate = forecastSettings.rateOverride ?? historyRate ?? windowsRate;
+  const forecastRateSource =
+    forecastSettings.rateOverride !== null
+      ? 'manual'
+      : historyRate !== null
+        ? 'history'
+        : windowsRate !== null
+          ? 'windows'
+          : null;
 
   /* ---------- 首屏卡片一次性级联入场 ----------
    * 首批数据渲染后立即翻转 cardsAnimated；已挂载的卡片在挂载时捕获过自己的
@@ -321,6 +411,8 @@ export function QuotaPage() {
         refreshing={loading || batchLoading}
         disableControls={disableControls}
         onRefreshAll={handleRefreshAll}
+        showEmails={showEmails}
+        onToggleEmails={() => setShowEmails((value) => !value)}
       />
 
       <section className={styles.workbench}>
@@ -334,6 +426,17 @@ export function QuotaPage() {
             onChange={handleTabChange}
           />
         </div>
+
+        <QuotaForecast
+          members={poolMembers}
+          history={poolHistory}
+          rate={forecastRate}
+          rateSource={forecastRateSource}
+          settings={forecastSettings}
+          onSettingsChange={handleForecastSettings}
+          loading={loading || !poolSettled}
+          now={clock}
+        />
 
         <div className={styles.toolbar}>
           <div className={styles.search}>
@@ -362,6 +465,18 @@ export function QuotaPage() {
               </button>
             )}
           </div>
+          <div className={styles.layoutPicker}>
+            <Select
+              value={layout}
+              options={['ledger', 'cards'].map((value) => ({
+                value,
+                label: t(`quota_management.layout_${value}`),
+              }))}
+              onChange={(value) => setLayout(value as 'ledger' | 'cards')}
+              ariaLabel={t('quota_management.layout_label')}
+              size="sm"
+            />
+          </div>
           <div className={styles.sort}>
             <Select
               value={sortMode}
@@ -377,6 +492,10 @@ export function QuotaPage() {
           <div className={styles.errorBanner} role="alert">
             {error}
           </div>
+        )}
+
+        {!loading && entries.length > 0 && layout === 'cards' && (
+          <QuotaSummary entries={entries} quotaFor={getQuota} resolvedTheme={resolvedTheme} />
         )}
 
         {loading ? (
@@ -414,20 +533,52 @@ export function QuotaPage() {
             }
           />
         ) : (
-          <div className={styles.grid}>
-            {pageItems.map((entry, index) => (
-              <QuotaCard
-                key={`${entry.type}:${getQuotaCacheKey(entry.file)}`}
-                entry={entry}
-                quota={getQuota(entry)}
-                resolvedTheme={resolvedTheme}
-                canRefresh={canUseActions && !entry.file.disabled}
-                resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
-                entranceDelayMs={cardEntranceDelay(index)}
-                onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-                onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-              />
-            ))}
+          <div className={layout === 'ledger' ? styles.ledger : styles.grid}>
+            {pageItems.map((entry, index) =>
+              layout === 'ledger' ? (
+                <div key={`${entry.type}:${getQuotaCacheKey(entry.file)}`} className={styles.entry}>
+                  {(index === 0 || pageItems[index - 1].type !== entry.type) && (
+                    <QuotaGroupHeader
+                      type={entry.type}
+                      count={tabCounts[entry.type] ?? 0}
+                      poolLimits={entries
+                        .filter((candidate) => candidate.type === entry.type)
+                        .map((candidate) =>
+                          pickPoolLimit(collectLedgerLimits(candidate.type, getQuota(candidate)))
+                        )}
+                      resolvedTheme={resolvedTheme}
+                      now={clock}
+                    />
+                  )}
+                  <QuotaLedgerRow
+                    entry={entry}
+                    quota={getQuota(entry)}
+                    resolvedTheme={resolvedTheme}
+                    canRefresh={canUseActions && !entry.file.disabled}
+                    resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
+                    showEmails={showEmails}
+                    now={clock}
+                    onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                  />
+                </div>
+              ) : (
+                <div key={`${entry.type}:${getQuotaCacheKey(entry.file)}`} className={styles.entry}>
+                  <QuotaCard
+                    key={`${entry.type}:${getQuotaCacheKey(entry.file)}`}
+                    entry={entry}
+                    quota={getQuota(entry)}
+                    resolvedTheme={resolvedTheme}
+                    canRefresh={canUseActions && !entry.file.disabled}
+                    resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
+                    entranceDelayMs={cardEntranceDelay(index)}
+                    onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    showEmails={showEmails}
+                  />
+                </div>
+              )
+            )}
           </div>
         )}
 
@@ -460,12 +611,15 @@ export function QuotaPage() {
         )}
 
         {/* 时间线只比较当前页凭证，避免大量凭证一次性生成无界泳道。 */}
-        <QuotaTimeline
-          entries={pageItems}
-          quotaFor={getQuota}
-          displayNameFor={displayNameFor}
-          resolvedTheme={resolvedTheme}
-        />
+        <details className={styles.timelineDetails}>
+          <summary>{t('quota_management.windows_title')}</summary>
+          <QuotaTimeline
+            entries={pageItems}
+            quotaFor={getQuota}
+            displayNameFor={showEmails ? displayNameFor : maskQuotaIdentity}
+            resolvedTheme={resolvedTheme}
+          />
+        </details>
       </section>
     </div>
   );

@@ -18,7 +18,7 @@ export interface QuotaResetLabelProps {
 
 export function QuotaResetLabel({ display, classes, soon = false }: QuotaResetLabelProps) {
   return (
-    <>
+    <span className={classes.quotaResetGroup}>
       <span className={classes.quotaReset}>{display.absolute}</span>
       {display.relative && (
         <span
@@ -31,6 +31,6 @@ export function QuotaResetLabel({ display, classes, soon = false }: QuotaResetLa
           {display.relative}
         </span>
       )}
-    </>
+    </span>
   );
 }
