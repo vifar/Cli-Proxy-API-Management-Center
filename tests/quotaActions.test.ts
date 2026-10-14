@@ -76,9 +76,22 @@ test.each([false, true])('reset messages use display identity on failure=%s', as
 });
 
 test('Claude retry confirmation uses display identity while retaining the operation key', () => {
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const storage = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    },
+  });
   const originalStatus = useAuthStore.getState().connectionStatus;
+  // Server rendering reads Zustand's captured initial snapshot, not current state.
+  const initialState = useAuthStore.getInitialState();
+  const originalInitialStatus = initialState.connectionStatus;
+  initialState.connectionStatus = 'connected';
   useAuthStore.setState({ connectionStatus: 'connected' });
-  spyOn(useAuthStore, 'getInitialState').mockReturnValue(useAuthStore.getState());
   const inspect = spyOn(resetGrantOperations, 'inspect').mockReturnValue({
     grantId: 'fixture-grant',
     organization: 'fixture-org',
@@ -100,5 +113,8 @@ test('Claude retry confirmation uses display identity while retaining the operat
     expect(confirmation.message).not.toContain('alice@example.com');
   } finally {
     useAuthStore.setState({ connectionStatus: originalStatus });
+    initialState.connectionStatus = originalInitialStatus;
+    if (storageDescriptor) Object.defineProperty(globalThis, 'localStorage', storageDescriptor);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
   }
 });
