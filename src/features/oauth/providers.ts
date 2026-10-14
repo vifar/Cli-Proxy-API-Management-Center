@@ -9,6 +9,7 @@ import iconMeta from '@/assets/icons/meta.svg';
 import iconCodex from '@/assets/icons/codex.svg';
 import iconClaude from '@/assets/icons/claude.svg';
 import iconAntigravity from '@/assets/icons/antigravity.svg';
+import iconQoder from '@/assets/icons/qoder.svg';
 // 赞助卡用的 App 图标版：K 与蓝点等比内缩进方块，蓝点不再顶出圆角
 import iconKimiTileBlack from '@/assets/icons/kimi-tile-black.svg';
 import iconKimiTileWhite from '@/assets/icons/kimi-tile-white.svg';
@@ -115,6 +116,14 @@ export const OAUTH_PROVIDERS: BuiltInOAuthProviderCard[] = [
     titleKey: 'auth_login.devin_oauth_title',
     icon: { light: iconDevin, dark: iconDevinDark },
     flow: 'browser',
+  },
+  {
+    kind: 'builtin',
+    id: 'qoder',
+    label: 'Qoder',
+    titleKey: 'auth_login.qoder_oauth_title',
+    icon: iconQoder,
+    flow: 'device',
   },
 ];
 

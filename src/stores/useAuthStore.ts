@@ -7,7 +7,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AuthState, LoginCredentials, ConnectionStatus } from '@/types';
 import { STORAGE_KEY_AUTH } from '@/utils/constants';
-import { obfuscatedStorage } from '@/services/storage/secureStorage';
+import {
+  createScopedAuthStorage,
+  getAuthLoginStateStorageKey,
+  obfuscatedStorage,
+  resolveLegacyAuthApiBase,
+} from '@/services/storage/secureStorage';
 import { apiClient } from '@/services/api/client';
 import { LegacyBackendError, probeLegacyBackend } from '@/services/api/legacyBackendProbe';
 import { useConfigStore } from './useConfigStore';
@@ -49,19 +54,36 @@ export const useAuthStore = create<AuthStoreState>()(
         restoreSessionPromise = (async () => {
           obfuscatedStorage.migratePlaintextKeys(['apiBase', 'apiUrl', 'managementKey']);
 
-          const wasLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
           const legacyBase =
             obfuscatedStorage.getItem<string>('apiBase') ||
             obfuscatedStorage.getItem<string>('apiUrl', { encrypt: true });
           const legacyKey = obfuscatedStorage.getItem<string>('managementKey');
+          const detectedBase = detectApiBaseFromLocation();
+          const migratedLegacyBase = legacyBase
+            ? resolveLegacyAuthApiBase(legacyBase, detectedBase)
+            : null;
 
           const { apiBase, managementKey, rememberPassword } = get();
+          const canUseLegacyCredentials = !apiBase && Boolean(migratedLegacyBase);
           const resolvedBase = normalizeApiBase(
-            apiBase || legacyBase || detectApiBaseFromLocation()
+            apiBase || (canUseLegacyCredentials ? migratedLegacyBase : '') || detectedBase
           );
-          const resolvedKey = managementKey || legacyKey || '';
+          const resolvedKey = managementKey || (canUseLegacyCredentials ? legacyKey : '') || '';
           const resolvedRememberPassword =
-            rememberPassword || Boolean(managementKey) || Boolean(legacyKey);
+            rememberPassword ||
+            Boolean(managementKey) ||
+            Boolean(canUseLegacyCredentials && legacyKey);
+          const loginStateKey = getAuthLoginStateStorageKey(detectedBase);
+          const wasLoggedIn =
+            localStorage.getItem(loginStateKey) === 'true' ||
+            (canUseLegacyCredentials && localStorage.getItem('isLoggedIn') === 'true');
+
+          if (canUseLegacyCredentials) {
+            obfuscatedStorage.removeItem('apiBase');
+            obfuscatedStorage.removeItem('apiUrl');
+            obfuscatedStorage.removeItem('managementKey');
+            localStorage.removeItem('isLoggedIn');
+          }
 
           set({
             apiBase: resolvedBase,
@@ -138,9 +160,9 @@ export const useAuthStore = create<AuthStoreState>()(
             connectionStatus: 'connected',
           });
           if (rememberPassword) {
-            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem(getAuthLoginStateStorageKey(detectApiBaseFromLocation()), 'true');
           } else {
-            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem(getAuthLoginStateStorageKey(detectApiBaseFromLocation()));
           }
         } catch (error: unknown) {
           set({ connectionStatus: 'error' });
@@ -164,7 +186,7 @@ export const useAuthStore = create<AuthStoreState>()(
           supportsPlugin: false,
           connectionStatus: 'disconnected',
         });
-        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem(getAuthLoginStateStorageKey(detectApiBaseFromLocation()));
       },
 
       // 检查认证状态
@@ -213,18 +235,7 @@ export const useAuthStore = create<AuthStoreState>()(
     }),
     {
       name: STORAGE_KEY_AUTH,
-      storage: createJSONStorage(() => ({
-        getItem: (name) => {
-          const data = obfuscatedStorage.getItem<AuthStoreState>(name);
-          return data ? JSON.stringify(data) : null;
-        },
-        setItem: (name, value) => {
-          obfuscatedStorage.setItem(name, JSON.parse(value));
-        },
-        removeItem: (name) => {
-          obfuscatedStorage.removeItem(name);
-        },
-      })),
+      storage: createJSONStorage(createScopedAuthStorage),
       partialize: (state) => ({
         apiBase: state.apiBase,
         ...(state.rememberPassword ? { managementKey: state.managementKey } : {}),

@@ -107,7 +107,8 @@
     "plugin_store": "Магазин плагинов",
     "config_management": "Панель конфигурации",
     "logs": "Просмотр логов",
-    "system_info": "Информация системы"
+    "system_info": "Информация системы",
+    "usage_statistics": "Статистика использования"
   },
   "nav_groups": {
     "operate": "Работа",
@@ -126,7 +127,8 @@
     "plugin_store": "Поиск и установка плагинов",
     "logs": "Трассировка запросов",
     "config_management": "Базовая конфигурация шлюза",
-    "system_info": "Состояние и диагностика"
+    "system_info": "Состояние и диагностика",
+    "usage_statistics": "Запросы и токены"
   },
   "dashboard": {
     "hero_verdict_good": "Всё стабильно",
@@ -343,8 +345,9 @@
     "filter_aistudio": "AIStudio",
     "filter_claude": "Claude",
     "filter_codex": "Codex",
-    "filter_meta": "Muse (Meta)",
     "filter_devin": "Devin",
+    "filter_meta": "Muse (Meta)",
+    "filter_qoder": "Qoder",
     "filter_antigravity": "Antigravity",
     "filter_xai": "xAI",
     "filter_iflow": "iFlow",
@@ -624,6 +627,22 @@
     "limit_window": "Лимит {{duration}}",
     "limit_index": "Лимит #{{index}}",
     "reset_hint": "сброс через {{hint}}"
+  },
+  "qoder_quota": {
+    "title": "Квота Qoder",
+    "empty_title": "Файлы авторизации Qoder отсутствуют",
+    "empty_desc": "Войдите в Qoder, чтобы увидеть оставшуюся квоту.",
+    "idle": "Нажмите, чтобы обновить квоту",
+    "loading": "Загрузка квоты...",
+    "load_failed": "Не удалось загрузить квоту: {{message}}",
+    "empty_data": "Снимок квоты Qoder отсутствует. Обновите файлы авторизации после синхронизации моделей Qoder.",
+    "refresh_button": "Обновить квоту",
+    "fetch_all": "Получить все",
+    "usage_label": "Использование",
+    "expires_at": "Истекает {{time}}",
+    "org_resource_remaining": "Остаток ресурса организации",
+    "quota_exceeded": "Квота исчерпана",
+    "unit_default": "credits"
   },
   "xai_quota": {
     "title": "Квота Grok",
@@ -934,6 +953,16 @@
     "iflow_oauth_start_error": "Не удалось запустить iFlow OAuth:",
     "iflow_oauth_polling_error": "Не удалось проверить статус аутентификации:",
     "remote_access_disabled": "Этот способ входа недоступен при удалённом доступе. Подключитесь с localhost.",
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "Начать вход Qoder",
+    "qoder_oauth_hint": "Выполните вход в Qoder через поток авторизации устройства, затем автоматически сохраните учётные данные.",
+    "qoder_oauth_url_label": "URL авторизации:",
+    "qoder_open_link": "Открыть ссылку",
+    "qoder_copy_link": "Скопировать ссылку",
+    "qoder_oauth_status_waiting": "Ожидание аутентификации...",
+    "qoder_oauth_status_success": "Аутентификация успешна!",
+    "qoder_oauth_status_error": "Ошибка аутентификации:",
+    "qoder_oauth_start_error": "Не удалось запустить Qoder OAuth:",
     "kimi_oauth_name": "Kimi — Китай",
     "kimi_ai_oauth_name": "Kimi — международный",
     "method_device": "Код устройства",
@@ -1395,7 +1424,9 @@
           "timeout": "Timeout",
           "stabilize_device": "Стабилизировать профиль устройства",
           "stabilize_device_desc": "Фиксировать OS/Arch и стабилизировать программный отпечаток для учётных данных/API-ключа",
-          "beta_features": "Beta Features"
+          "beta_features": "Beta Features",
+          "codex_identity_confuse": "Codex identity-confuse",
+          "codex_identity_confuse_desc": "При fill-first routing или session affinity переопределяет Codex prompt_cache_key и installation identity под выбранную auth-запись"
         },
         "network": {
           "title": "Сетевые настройки",
@@ -2218,6 +2249,28 @@
     "modelCatalog": {
       "notLoaded": "Не загружено"
     }
+  },
+  "usage_stats": {
+    "title": "Статистика использования",
+    "subtitle": "Запросы и токены из runtime прокси.",
+    "refresh": "Обновить",
+    "last_updated": "Обновлено",
+    "load_failed": "Не удалось загрузить статистику",
+    "total_requests": "Всего запросов",
+    "total_tokens": "Всего токенов",
+    "success": "Успешно",
+    "failure": "Ошибки",
+    "requests_by_hour": "Запросы по часам",
+    "tokens_by_hour": "Токены по часам",
+    "top_models": "Топ моделей",
+    "api_breakdown": "API разбивка",
+    "api": "API",
+    "model": "Модель",
+    "requests": "Запросы",
+    "tokens": "Токены",
+    "failures": "Ошибки",
+    "models": "Модели",
+    "no_data": "Нет данных использования"
   },
   "claude_reset": {
     "expiry_title": "Срок действия ручных сбросов ({{timezone}})",

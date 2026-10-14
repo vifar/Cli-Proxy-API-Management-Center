@@ -1,0 +1,23 @@
+name: Require no-mistakes
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: no-mistakes-required-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: PR must be raised via no-mistakes
+    runs-on: [self-hosted, Linux, X64, king-server, cpamc]
+    timeout-minutes: 5
+    steps:
+      - name: Verify completed pipeline for the current PR head
+        uses: vifar/no-mistakes/.github/actions/require-no-mistakes@43617132cf4d0fb1ced04cc7eda6b0b2bb9d25eb

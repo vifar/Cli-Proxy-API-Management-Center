@@ -107,7 +107,8 @@
     "plugin_store": "插件商店",
     "config_management": "配置面板",
     "logs": "日志查看",
-    "system_info": "中心信息"
+    "system_info": "中心信息",
+    "usage_statistics": "使用统计"
   },
   "nav_groups": {
     "operate": "运行",
@@ -127,7 +128,8 @@
     "plugin_store": "发现并安装插件",
     "logs": "请求追踪与排查",
     "config_management": "网关基础配置",
-    "system_info": "运行与诊断信息"
+    "system_info": "运行与诊断信息",
+    "usage_statistics": "请求与 Token 用量"
   },
   "dashboard": {
     "hero_verdict_good": "运行平稳",
@@ -338,8 +340,9 @@
     "filter_aistudio": "AIStudio",
     "filter_claude": "Claude",
     "filter_codex": "Codex",
-    "filter_meta": "Muse (Meta)",
     "filter_devin": "Devin",
+    "filter_meta": "Muse (Meta)",
+    "filter_qoder": "Qoder",
     "filter_antigravity": "Antigravity",
     "filter_xai": "xAI",
     "filter_iflow": "iFlow",
@@ -620,6 +623,22 @@
     "limit_window": "{{duration}} 限额",
     "limit_index": "限额 #{{index}}",
     "reset_hint": "{{hint}} 后重置"
+  },
+  "qoder_quota": {
+    "title": "Qoder 额度",
+    "empty_title": "暂无 Qoder 认证",
+    "empty_desc": "登录 Qoder 后即可查看剩余额度。",
+    "idle": "点击此处刷新额度",
+    "loading": "正在加载额度...",
+    "load_failed": "额度获取失败：{{message}}",
+    "empty_data": "暂无 Qoder 额度快照。请在 Qoder 模型同步后刷新认证文件。",
+    "refresh_button": "刷新额度",
+    "fetch_all": "获取全部",
+    "usage_label": "使用量",
+    "expires_at": "{{time}} 到期",
+    "org_resource_remaining": "组织资源剩余",
+    "quota_exceeded": "额度已用尽",
+    "unit_default": "credits"
   },
   "xai_quota": {
     "title": "Grok 额度",
@@ -930,6 +949,16 @@
     "iflow_oauth_start_error": "启动 iFlow OAuth 失败:",
     "iflow_oauth_polling_error": "检查认证状态失败:",
     "remote_access_disabled": "远程访问不支持此登录方式，请从本地 (localhost) 访问",
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "开始 Qoder 登录",
+    "qoder_oauth_hint": "通过设备授权流程登录 Qoder，自动获取并保存认证文件。",
+    "qoder_oauth_url_label": "授权链接:",
+    "qoder_open_link": "打开链接",
+    "qoder_copy_link": "复制链接",
+    "qoder_oauth_status_waiting": "等待认证中...",
+    "qoder_oauth_status_success": "认证成功！",
+    "qoder_oauth_status_error": "认证失败:",
+    "qoder_oauth_start_error": "启动 Qoder OAuth 失败:",
     "kimi_oauth_name": "Kimi 国内站",
     "kimi_ai_oauth_name": "Kimi 国际站",
     "method_device": "设备码",
@@ -1391,7 +1420,9 @@
           "timeout": "Timeout",
           "stabilize_device": "稳定设备指纹",
           "stabilize_device_desc": "固定 OS/Arch，并按凭据/API Key 稳定软件指纹",
-          "beta_features": "Beta Features"
+          "beta_features": "Beta Features",
+          "codex_identity_confuse": "Codex 身份混淆",
+          "codex_identity_confuse_desc": "在 fill-first 或会话粘性路由下，按所选认证重映射 Codex prompt_cache_key 与安装身份"
         },
         "network": {
           "title": "网络配置",
@@ -2223,6 +2254,28 @@
     "modelCatalog": {
       "notLoaded": "未加载"
     }
+  },
+  "usage_stats": {
+    "title": "使用统计",
+    "subtitle": "来自代理运行时的请求和 Token 使用情况。",
+    "refresh": "刷新",
+    "last_updated": "最后更新",
+    "load_failed": "无法加载使用统计",
+    "total_requests": "总请求数",
+    "total_tokens": "总 Token 数",
+    "success": "成功",
+    "failure": "失败",
+    "requests_by_hour": "按小时请求",
+    "tokens_by_hour": "按小时 Token",
+    "top_models": "热门模型",
+    "api_breakdown": "API 明细",
+    "api": "API",
+    "model": "模型",
+    "requests": "请求",
+    "tokens": "Token",
+    "failures": "失败",
+    "models": "模型",
+    "no_data": "暂无使用数据"
   },
   "claude_reset": {
     "expiry_title": "主动重置过期时间（{{timezone}}）",

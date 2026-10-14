@@ -99,6 +99,35 @@ describe('collectQuotaRowInstants', () => {
     expect(collectQuotaRowInstants('kimi', quota).map((i) => i.rowId)).toEqual(['r1']);
   });
 
+  test('uses the Qoder quota reset contract as epoch milliseconds', () => {
+    const quota = { status: 'success', usage: { expires_at: 1_800_000_000_000 } };
+    expect(collectQuotaRowInstants('qoder', quota)).toEqual([
+      { rowId: 'qoder:usage', atMs: 1_800_000_000_000, kind: 'window' },
+    ]);
+    expect(nextRecoveryMs('qoder', quota, 1_799_999_400_000)).toBe(1_800_000_000_000);
+    expect(pickUrgentRowId(collectQuotaRowInstants('qoder', quota), 1_799_999_400_000)).toBe(
+      'qoder:usage'
+    );
+  });
+
+  test('ignores unloaded, absent, invalid, zero, and elapsed Qoder resets', () => {
+    for (const status of ['idle', 'loading', 'error']) {
+      expect(
+        collectQuotaRowInstants('qoder', { status, usage: { expires_at: NOW + HOUR_MS } })
+      ).toEqual([]);
+    }
+    for (const expires_at of [undefined, null, '1800000000000', Number.NaN, Infinity, 0, -1]) {
+      expect(
+        collectQuotaRowInstants('qoder', { status: 'success', usage: { expires_at } })
+      ).toEqual([]);
+    }
+    expect(collectQuotaRowInstants('qoder', { status: 'success' })).toEqual([]);
+    expect(collectQuotaRowInstants('qoder', { status: 'success', usage: null })).toEqual([]);
+    for (const expires_at of [NOW - 1, NOW]) {
+      expect(nextRecoveryMs('qoder', { status: 'success', usage: { expires_at } }, NOW)).toBeNull();
+    }
+  });
+
   test('returns nothing unless the credential loaded successfully', () => {
     for (const status of ['idle', 'loading', 'error']) {
       expect(collectQuotaRowInstants('claude', { ...claudeQuota, status })).toEqual([]);

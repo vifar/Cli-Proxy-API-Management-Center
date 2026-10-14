@@ -17,11 +17,33 @@ export const computeApiUrl = (base: string): string => {
   return `${normalized}${MANAGEMENT_API_PREFIX}`;
 };
 
+const DASHBOARD_DOCUMENT_FILE = /^(?:management|index)\.html?$/i;
+
+export const resolvePanelBasePath = (pathname: string): string => {
+  const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  const hasTrailingSlash = /\/$/.test(normalizedPath);
+  const withoutTrailingSlash = normalizedPath.replace(/\/+$/, '');
+  if (!withoutTrailingSlash) return '';
+  if (hasTrailingSlash) return withoutTrailingSlash;
+
+  const lastSlash = withoutTrailingSlash.lastIndexOf('/');
+  const lastSegment = withoutTrailingSlash.slice(lastSlash + 1);
+  if (DASHBOARD_DOCUMENT_FILE.test(lastSegment)) {
+    return withoutTrailingSlash.slice(0, lastSlash).replace(/\/+$/, '');
+  }
+
+  return withoutTrailingSlash;
+};
+
 export const detectApiBaseFromLocation = (): string => {
+  if (typeof window === 'undefined') {
+    return normalizeApiBase(`http://localhost:${DEFAULT_API_PORT}`);
+  }
   try {
-    const { protocol, hostname, port } = window.location;
+    const { protocol, hostname, port, pathname } = window.location;
     const normalizedPort = port ? `:${port}` : '';
-    return normalizeApiBase(`${protocol}//${hostname}${normalizedPort}`);
+    const basePath = resolvePanelBasePath(pathname || '/');
+    return normalizeApiBase(`${protocol}//${hostname}${normalizedPort}${basePath}`);
   } catch (error) {
     console.warn('Failed to detect api base from location, fallback to default', error);
     return normalizeApiBase(`http://localhost:${DEFAULT_API_PORT}`);

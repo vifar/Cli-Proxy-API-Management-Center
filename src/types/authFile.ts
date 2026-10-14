@@ -15,6 +15,7 @@ export type AuthFileType =
   | 'devin'
   | 'meta'
   | 'antigravity'
+  | 'qoder'
   | 'xai'
   | 'iflow'
   | 'vertex'

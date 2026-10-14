@@ -97,6 +97,7 @@
     "status": "Trạng thái kết nối:"
   },
   "nav": {
+    "usage_statistics": "Thống kê sử dụng",
     "dashboard": "Bảng điều khiển",
     "quick_start": "Bắt đầu nhanh",
     "ai_providers": "AI Provider",
@@ -117,6 +118,7 @@
     "control": "Điều khiển"
   },
   "nav_meta": {
+    "usage_statistics": "Số yêu cầu và token đã dùng",
     "dashboard": "Tổng quan vận hành",
     "quick_start": "Thiết lập APIKEY.FUN",
     "ai_providers": "Định tuyến model upstream",
@@ -217,6 +219,7 @@
     "routing_strategy_fill_first": "fill-first (ưu tiên lấp đầy)"
   },
   "auth_files": {
+    "filter_qoder": "Qoder",
     "title": "Quản lý File xác thực",
     "meta_total": "{{count}} credential",
     "meta_active": "{{count}} đang hoạt động",
@@ -755,6 +758,16 @@
     "remove_mapping": "Xóa ánh xạ bí danh {{number}}"
   },
   "auth_login": {
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "Bắt đầu đăng nhập Qoder",
+    "qoder_oauth_hint": "Đăng nhập Qoder qua luồng xác thực thiết bị và tự động lưu thông tin xác thực được tạo.",
+    "qoder_oauth_url_label": "URL xác thực:",
+    "qoder_open_link": "Mở liên kết",
+    "qoder_copy_link": "Sao chép liên kết",
+    "qoder_oauth_status_waiting": "Đang chờ xác thực...",
+    "qoder_oauth_status_success": "Xác thực thành công!",
+    "qoder_oauth_status_error": "Xác thực thất bại:",
+    "qoder_oauth_start_error": "Không thể bắt đầu Qoder OAuth:",
     "recommended_provider_section": "Provider đề xuất",
     "recommended_provider_badge": "Provider đề xuất",
     "other_oauth_providers": "Provider OAuth khác",
@@ -1173,6 +1186,8 @@
           "devin_sensitive_words_hint": "Mỗi hàng một từ hoặc cụm từ. Cấu hình cẩn thận: nội dung khớp sẽ khiến toàn bộ dòng system prompt bị xóa; các mục trống sẽ bị xóa khi lưu"
         },
         "headers": {
+          "codex_identity_confuse": "Ánh xạ danh tính Codex",
+          "codex_identity_confuse_desc": "Khi dùng định tuyến fill-first hoặc gắn phiên, ánh xạ lại prompt_cache_key và danh tính cài đặt Codex theo thông tin xác thực đã chọn.",
           "title": "Header mặc định",
           "description": "Header mặc định cho yêu cầu OAuth Claude và Codex khi client không gửi",
           "claude_title": "Header mặc định Claude",
@@ -2230,6 +2245,44 @@
     "weekly": "Quota hàng tuần",
     "unknown": "Không rõ",
     "remaining": "Còn lại {{percent}}%"
+  },
+  "qoder_quota": {
+    "title": "Quota Qoder",
+    "empty_title": "Không có tệp xác thực Qoder",
+    "empty_desc": "Đăng nhập Qoder để xem quota còn lại.",
+    "idle": "Nhấn để làm mới quota",
+    "loading": "Đang tải quota...",
+    "load_failed": "Không thể tải quota: {{message}}",
+    "empty_data": "Không có dữ liệu quota Qoder. Làm mới tệp xác thực sau khi đồng bộ mô hình Qoder.",
+    "refresh_button": "Làm mới quota",
+    "fetch_all": "Tải tất cả",
+    "usage_label": "Sử dụng",
+    "expires_at": "Hết hạn {{time}}",
+    "org_resource_remaining": "Tài nguyên tổ chức còn lại",
+    "quota_exceeded": "Đã vượt quota",
+    "unit_default": "tín dụng"
+  },
+  "usage_stats": {
+    "title": "Thống kê sử dụng",
+    "subtitle": "Số yêu cầu và token từ phiên chạy proxy.",
+    "refresh": "Làm mới",
+    "last_updated": "Cập nhật lần cuối",
+    "load_failed": "Không thể tải thống kê sử dụng",
+    "total_requests": "Tổng yêu cầu",
+    "total_tokens": "Tổng token",
+    "success": "Thành công",
+    "failure": "Thất bại",
+    "requests_by_hour": "Yêu cầu theo giờ",
+    "tokens_by_hour": "Token theo giờ",
+    "top_models": "Mô hình hàng đầu",
+    "api_breakdown": "Thống kê theo API",
+    "api": "API",
+    "model": "Mô hình",
+    "requests": "Yêu cầu",
+    "tokens": "Token",
+    "failures": "Lỗi",
+    "models": "Mô hình",
+    "no_data": "Không có dữ liệu sử dụng"
   },
   "claude_reset": {
     "expiry_title": "Hết hạn đặt lại thủ công ({{timezone}})",

@@ -107,7 +107,8 @@
     "plugin_store": "插件商店",
     "config_management": "設定面板",
     "logs": "記錄檢視",
-    "system_info": "中心資訊"
+    "system_info": "中心資訊",
+    "usage_statistics": "使用統計"
   },
   "nav_groups": {
     "operate": "運行",
@@ -127,7 +128,8 @@
     "plugin_store": "探索並安裝插件",
     "logs": "請求追蹤與排查",
     "config_management": "閘道基礎設定",
-    "system_info": "運行與診斷資訊"
+    "system_info": "運行與診斷資訊",
+    "usage_statistics": "請求與 Token 用量"
   },
   "dashboard": {
     "hero_verdict_good": "運行平穩",
@@ -338,8 +340,9 @@
     "filter_aistudio": "AIStudio",
     "filter_claude": "Claude",
     "filter_codex": "Codex",
-    "filter_meta": "Muse (Meta)",
     "filter_devin": "Devin",
+    "filter_meta": "Muse (Meta)",
+    "filter_qoder": "Qoder",
     "filter_antigravity": "Antigravity",
     "filter_xai": "xAI",
     "filter_iflow": "iFlow",
@@ -620,6 +623,22 @@
     "limit_window": "{{duration}} 限額",
     "limit_index": "限額 #{{index}}",
     "reset_hint": "{{hint}} 後重置"
+  },
+  "qoder_quota": {
+    "title": "Qoder 配額",
+    "empty_title": "暫無 Qoder 驗證",
+    "empty_desc": "登入 Qoder 後即可查看剩餘配額。",
+    "idle": "點擊此處重新整理配額",
+    "loading": "正在載入配額...",
+    "load_failed": "配額取得失敗：{{message}}",
+    "empty_data": "暫無 Qoder 配額快照。請在 Qoder 模型同步後重新整理驗證檔案。",
+    "refresh_button": "重新整理配額",
+    "fetch_all": "取得全部",
+    "usage_label": "使用量",
+    "expires_at": "{{time}} 到期",
+    "org_resource_remaining": "組織資源剩餘",
+    "quota_exceeded": "配額已用盡",
+    "unit_default": "credits"
   },
   "xai_quota": {
     "title": "Grok 配額",
@@ -956,6 +975,16 @@
     "iflow_cookie_result_path": "儲存路徑",
     "iflow_cookie_result_type": "類型",
     "remote_access_disabled": "遠端存取不支援此登入方式，請從本地（localhost）存取",
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "開始 Qoder 登入",
+    "qoder_oauth_hint": "透過裝置授權流程登入 Qoder，自動取得並儲存驗證檔案。",
+    "qoder_oauth_url_label": "授權連結:",
+    "qoder_open_link": "開啟連結",
+    "qoder_copy_link": "複製連結",
+    "qoder_oauth_status_waiting": "等待驗證中...",
+    "qoder_oauth_status_success": "驗證成功！",
+    "qoder_oauth_status_error": "驗證失敗:",
+    "qoder_oauth_start_error": "啟動 Qoder OAuth 失敗:",
     "kimi_oauth_name": "Kimi 中國站",
     "kimi_ai_oauth_name": "Kimi 國際站",
     "method_device": "裝置碼",
@@ -1419,7 +1448,9 @@
           "timeout": "Timeout",
           "stabilize_device": "穩定設備指紋",
           "stabilize_device_desc": "固定 OS/Arch，並按憑證/API Key 穩定軟體指紋",
-          "beta_features": "Beta Features"
+          "beta_features": "Beta Features",
+          "codex_identity_confuse": "Codex 身分混淆",
+          "codex_identity_confuse_desc": "在 fill-first 或會話黏性路由下，按所選驗證重映射 Codex prompt_cache_key 與安裝身分"
         },
         "network": {
           "title": "網路設定",
@@ -2251,6 +2282,28 @@
     "modelCatalog": {
       "notLoaded": "未載入"
     }
+  },
+  "usage_stats": {
+    "title": "使用統計",
+    "subtitle": "來自代理執行階段的請求與 Token 使用情況。",
+    "refresh": "重新整理",
+    "last_updated": "最後更新",
+    "load_failed": "無法載入使用統計",
+    "total_requests": "總請求數",
+    "total_tokens": "總 Token 數",
+    "success": "成功",
+    "failure": "失敗",
+    "requests_by_hour": "每小時請求",
+    "tokens_by_hour": "每小時 Token",
+    "top_models": "熱門模型",
+    "api_breakdown": "API 明細",
+    "api": "API",
+    "model": "模型",
+    "requests": "請求",
+    "tokens": "Token",
+    "failures": "失敗",
+    "models": "模型",
+    "no_data": "暫無使用資料"
   },
   "claude_reset": {
     "expiry_title": "主動重置過期時間（{{timezone}}）",

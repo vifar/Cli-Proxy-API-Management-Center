@@ -391,6 +391,24 @@ export interface KimiQuotaState {
   errorStatus?: number;
 }
 
+export interface QoderUsageSnapshot {
+  used: number;
+  total: number;
+  remaining: number;
+  percentage: number;
+  unit: string;
+  is_quota_exceeded: boolean;
+  expires_at: number;
+  org_resource_remaining?: number;
+}
+
+export interface QoderQuotaState {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  usage?: QoderUsageSnapshot | null;
+  error?: string;
+  errorStatus?: number;
+}
+
 // xAI/Grok API payload types
 export interface XaiBillingCent {
   val?: number | string;

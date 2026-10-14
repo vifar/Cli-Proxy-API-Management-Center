@@ -4,7 +4,7 @@
 
 import type { TypeColorSet } from '@/types';
 
-// Theme colors for type badges — keep in sync with authFiles/constants.ts
+// Shared theme colors for type badges; authFiles/constants.ts re-exports these.
 export const TYPE_COLORS: Record<string, TypeColorSet> = {
   qwen: {
     light: { bg: '#ede5fd', text: '#5530c7' },
@@ -41,6 +41,10 @@ export const TYPE_COLORS: Record<string, TypeColorSet> = {
   antigravity: {
     light: { bg: '#e0f7fa', text: '#006064' },
     dark: { bg: '#004d40', text: '#80deea' },
+  },
+  qoder: {
+    light: { bg: '#ddf7ff', text: '#075985' },
+    dark: { bg: '#0b3a4a', text: '#7dd3fc' },
   },
   xai: {
     light: { bg: '#f3f4f6', text: '#111827', border: '1px solid #d1d5db' },

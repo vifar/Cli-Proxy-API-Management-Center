@@ -14,10 +14,11 @@ import i18n from '@/i18n';
 import { CodexQuotaBody } from '@/features/quota/providers/codex/CodexQuotaBody';
 import { ClaudeQuotaBody } from '@/features/quota/providers/claude/ClaudeQuotaBody';
 import { KimiQuotaBody } from '@/features/quota/providers/kimi/KimiQuotaBody';
+import { QoderQuotaBody } from '@/features/quota/providers/qoder/QoderQuotaBody';
 import { QUOTA_CLASS_KEYS, bindQuotaClasses } from '@/features/quota/types';
 import { formatInstantShort } from '@/utils/quota';
 import { DAY_MS, HOUR_MS } from '@/utils/time/durations';
-import type { ClaudeQuotaState, CodexQuotaState, KimiQuotaState } from '@/types';
+import type { ClaudeQuotaState, CodexQuotaState, KimiQuotaState, QoderQuotaState } from '@/types';
 
 const classes = bindQuotaClasses(
   Object.fromEntries(QUOTA_CLASS_KEYS.map((key) => [key, key])),
@@ -256,5 +257,65 @@ describe('ClaudeQuotaBody', () => {
     expect(markup).toContain('08-06 04:00');
     expect(markup).toMatch(/2 hours/);
     expect(markup).toMatch(/4 days/);
+  });
+});
+
+describe('QoderQuotaBody', () => {
+  test('renders exhausted quota with warning severity', () => {
+    const quota: QoderQuotaState = {
+      status: 'success',
+      usage: {
+        used: 100,
+        total: 100,
+        remaining: 0,
+        percentage: 1,
+        unit: 'credits',
+        is_quota_exceeded: true,
+        expires_at: 0,
+      },
+    };
+
+    const markup = renderToStaticMarkup(createElement(QoderQuotaBody, { quota, classes }));
+
+    expect(markup).toContain('quotaWarningMessage');
+    expect(markup).toContain('role="alert"');
+  });
+
+  test('renders the backend fractional quota and epoch milliseconds in both class maps', () => {
+    const quota: QoderQuotaState = {
+      status: 'success',
+      usage: {
+        used: 25,
+        total: 100,
+        remaining: 75,
+        percentage: 0.25,
+        unit: 'credits',
+        is_quota_exceeded: false,
+        expires_at: 946_684_800_000,
+        org_resource_remaining: 0,
+      },
+    };
+    for (const host of ['quota-page', 'auth-file']) {
+      const hostClasses = bindQuotaClasses(
+        Object.fromEntries(QUOTA_CLASS_KEYS.map((key) => [key, `${host}-${key}`])),
+        host
+      );
+      const markup = renderToStaticMarkup(
+        createElement(QoderQuotaBody, { quota, classes: hostClasses })
+      );
+      expect(markup).toContain('75%');
+      expect(markup).toContain('width:75%');
+      expect(markup).toContain('25 / 100 credits');
+      expect(markup).toContain('0 credits');
+      const expiry = new Intl.DateTimeFormat(undefined, {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(new Date('2000-01-01T00:00:00Z'));
+      expect(markup).toContain(expiry);
+      expect(markup).not.toContain('role="alert"');
+    }
   });
 });

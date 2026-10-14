@@ -107,7 +107,8 @@
     "plugin_store": "Plugin Store",
     "config_management": "Config Panel",
     "logs": "Logs Viewer",
-    "system_info": "Management Center Info"
+    "system_info": "Management Center Info",
+    "usage_statistics": "Usage Statistics"
   },
   "nav_groups": {
     "operate": "Operate",
@@ -127,7 +128,8 @@
     "plugin_store": "Discover & install plugins",
     "logs": "Request tracing",
     "config_management": "Gateway configuration",
-    "system_info": "Runtime & diagnostics"
+    "system_info": "Runtime & diagnostics",
+    "usage_statistics": "Request and token usage"
   },
   "dashboard": {
     "hero_verdict_good": "All systems steady",
@@ -340,8 +342,9 @@
     "filter_aistudio": "AIStudio",
     "filter_claude": "Claude",
     "filter_codex": "Codex",
-    "filter_meta": "Muse (Meta)",
     "filter_devin": "Devin",
+    "filter_meta": "Muse (Meta)",
+    "filter_qoder": "Qoder",
     "filter_antigravity": "Antigravity",
     "filter_xai": "xAI",
     "filter_iflow": "iFlow",
@@ -621,6 +624,22 @@
     "limit_window": "{{duration}} limit",
     "limit_index": "Limit #{{index}}",
     "reset_hint": "resets in {{hint}}"
+  },
+  "qoder_quota": {
+    "title": "Qoder Quota",
+    "empty_title": "No Qoder Auth Files",
+    "empty_desc": "Login with Qoder to view remaining quota.",
+    "idle": "Click here to refresh quota",
+    "loading": "Loading quota...",
+    "load_failed": "Failed to load quota: {{message}}",
+    "empty_data": "No Qoder quota snapshot available. Refresh auth files after Qoder models sync.",
+    "refresh_button": "Refresh Quota",
+    "fetch_all": "Fetch All",
+    "usage_label": "Usage",
+    "expires_at": "Expires {{time}}",
+    "org_resource_remaining": "Org resource remaining",
+    "quota_exceeded": "Quota exceeded",
+    "unit_default": "credits"
   },
   "xai_quota": {
     "title": "Grok Quota",
@@ -931,6 +950,16 @@
     "iflow_oauth_start_error": "Failed to start iFlow OAuth:",
     "iflow_oauth_polling_error": "Failed to check authentication status:",
     "remote_access_disabled": "This login method is not available for remote access. Please access from localhost.",
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "Start Qoder Login",
+    "qoder_oauth_hint": "Login to Qoder through the device authorization flow, then save the generated credential automatically.",
+    "qoder_oauth_url_label": "Authorization URL:",
+    "qoder_open_link": "Open Link",
+    "qoder_copy_link": "Copy Link",
+    "qoder_oauth_status_waiting": "Waiting for authentication...",
+    "qoder_oauth_status_success": "Authentication successful!",
+    "qoder_oauth_status_error": "Authentication failed:",
+    "qoder_oauth_start_error": "Failed to start Qoder OAuth:",
     "kimi_oauth_name": "Kimi China",
     "kimi_ai_oauth_name": "Kimi International",
     "method_device": "Device code",
@@ -1392,7 +1421,9 @@
           "timeout": "Timeout",
           "stabilize_device": "Stabilize Device Profile",
           "stabilize_device_desc": "Pin OS/Arch and stabilize the software fingerprint per credential/API key",
-          "beta_features": "Beta Features"
+          "beta_features": "Beta Features",
+          "codex_identity_confuse": "Codex Identity Confuse",
+          "codex_identity_confuse_desc": "When fill-first routing or session affinity is used, remap Codex prompt_cache_key and installation identity for the selected auth"
         },
         "network": {
           "title": "Network Configuration",
@@ -2224,6 +2255,28 @@
     "modelCatalog": {
       "notLoaded": "Not loaded"
     }
+  },
+  "usage_stats": {
+    "title": "Usage Statistics",
+    "subtitle": "Request and token usage from the proxy runtime.",
+    "refresh": "Refresh",
+    "last_updated": "Last updated",
+    "load_failed": "Failed to load usage statistics",
+    "total_requests": "Total Requests",
+    "total_tokens": "Total Tokens",
+    "success": "Success",
+    "failure": "Failed",
+    "requests_by_hour": "Requests by Hour",
+    "tokens_by_hour": "Tokens by Hour",
+    "top_models": "Top Models",
+    "api_breakdown": "API Breakdown",
+    "api": "API",
+    "model": "Model",
+    "requests": "Requests",
+    "tokens": "Tokens",
+    "failures": "Failures",
+    "models": "Models",
+    "no_data": "No usage data available"
   },
   "claude_reset": {
     "expiry_title": "Manual reset expiry ({{timezone}})",

@@ -15,11 +15,22 @@ Manage providers, credentials, quotas, and logs — from a single HTML file.
 
 **English** · [简体中文](README_CN.md)
 
-[Get started](#quick-start) · [Features](#features) · [Development](#development) · [Releases](https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases)
+[Get started](#quick-start) · [Features](#features) · [Development](#development) · [Releases](https://github.com/vifar/Cli-Proxy-API-Management-Center/releases)
 
 </div>
 
 ---
+
+## Maintained fork
+
+`vifar/Cli-Proxy-API-Management-Center` is a personal fork of `router-for-me/Cli-Proxy-API-Management-Center`, preserving useful management UI improvements from the previous CCS fork while following current upstream features and API contracts.
+
+- `Upstream Sync` prepares merge history as a Git bundle artifact after a frozen install and the full Bun test/lint/build suite pass.
+- Import the bundle onto a local feature branch and submit it through the real no-mistakes pipeline before opening a PR. Workflow verification alone does not complete the required review/test/document evidence.
+- Conflicts or failed verification update an assigned `upstream-sync-blocked` issue. Saved branches and open PRs are preserved.
+- Every GitHub Actions job uses the self-hosted King server cpamc pool.
+- Dated planning and evidence documents describe historical work, not verification of the current head.
+- The required PR check uses `vifar/no-mistakes/.github/actions/require-no-mistakes@43617132cf4d0fb1ced04cc7eda6b0b2bb9d25eb` to verify completed review/test/document evidence for the current head.
 
 ## One place to manage your instance
 
@@ -29,7 +40,7 @@ From everyday configuration to troubleshooting, keep the essentials close at han
 | --- | --- | --- |
 | Edit settings visually or in YAML, with a diff before saving. | Manage provider keys, auth files, and OAuth flows. | Check instance status, provider quotas, and request logs. |
 
-**Single-file deployment** · **Responsive layout** · **Four UI languages**
+**Single-file deployment** · **Responsive layout** · **Six UI languages**
 
 > [!IMPORTANT]
 > Requires **CLI Proxy API ≥ 8.0.0**; the latest v8 release is recommended. This repository is the management UI, not the proxy — it does not forward traffic. It uses the **v8 Management API** (`/v8/management`) and v8 configuration layout, with no v0 fallback. Plugin resources and custom extensions retain their backend-declared paths.
@@ -42,7 +53,7 @@ The UI is bundled with [CLI Proxy API](https://github.com/router-for-me/CLIProxy
 2. Open `http://<host>:<api_port>/management.html`.
 3. Enter your **management key** and connect.
 
-The API address is detected from the page URL and can be changed manually.
+The API address is detected from the page URL, including its reverse-proxy subpath, and can be changed manually. For example, `/proxy/management.html` connects through `/proxy/v8/management`; `/proxy` and `/proxy/` retain the same mount path.
 
 > [!NOTE]
 > The **management key** signs you into this UI. Client keys in `access.api-keys` authorize requests to the proxy — they are not interchangeable.
@@ -74,12 +85,13 @@ Upgrade the backend first and back up `config.yaml`. The backend returns the v8 
 | **Configuration** | Edit common settings and client keys visually, or use the YAML editor with search, highlighting, and a save diff preview. |
 | **AI providers** | Configure Gemini, Codex, Claude, Vertex, and OpenAI-compatible providers; manage keys, headers, proxies, and model mappings. |
 | **Auth files & OAuth** | Upload, download, and organize credentials; connect supported providers with OAuth or device flows; manage model aliases and exclusions. |
-| **Quotas** | Inspect quota and usage information for supported providers, including Claude, Antigravity, Codex, Kimi, and xAI/Grok. |
+| **Quotas** | Inspect quota and usage information for supported providers, including Claude, Antigravity, Codex, Kimi, Qoder, xAI/Grok, and backend quota plugins. |
+| **Usage statistics** | View request totals, token totals, hourly trends, and API/model breakdowns when a compatible backend exposes `/v8/management/usage`. Stock v8 does not expose this preserved CCS extension. |
 | **Logs** | Follow logs with auto-refresh, search, hide management traffic, and download request error logs. |
 | **Plugins** | Access plugin management when the connected backend advertises support. |
 | **System** | Check for updates, inspect available models, and clear local login data. |
 
-Supports **English, 简体中文, 繁體中文, and Русский**, with browser-language detection and a manual language switch. Responsive layouts support desktop, tablet, and mobile use in modern Chrome, Firefox, Safari, and Edge.
+Supports **English, 简体中文, 繁體中文, Русский, Tiếng Việt, and 한국어**, with browser-language detection and a manual language switch. Responsive layouts support desktop, tablet, and mobile use in modern Chrome, Firefox, Safari, and Edge. Qoder OAuth and quota snapshots require backend Qoder support.
 
 ## Sponsor
 
@@ -98,14 +110,13 @@ bun install --frozen-lockfile
 bun run build
 ```
 
-The output is **`dist/index.html`**, with JavaScript, CSS, and bundled assets inlined. The release workflow renames it to `management.html` for backend hosting.
+The output is **`dist/index.html`**, with JavaScript, CSS, and bundled assets inlined. For backend hosting, copy it as `management.html`. This fork has no automated release workflow; pushing a version tag does not publish an asset.
 
 Use `bun run preview` to preview locally. Prefer an HTTP server over opening the file via `file://`, which can encounter browser CORS restrictions.
 
 <details>
-<summary><strong>Release details</strong></summary>
+<summary><strong>Build details</strong></summary>
 
-- Tags matching `vX.Y.Z` trigger [the release workflow](.github/workflows/release.yml).
 - The UI version is injected at build time from `VERSION`, then git tags, then the package version, with `dev` as the final fallback.
 - Hash routing and an ES2020 build target keep deployment simple.
 
@@ -139,6 +150,8 @@ Issues and PRs are welcome. Include reproduction steps, backend and UI versions,
 
 Treat the management key as a secret. When **remember password** is enabled, it is persisted in browser storage using reversible obfuscation — **not encryption**.
 
+Remembered credentials are scoped to both the panel mount path and the selected API address. Legacy credentials are restored only when their normalized API address exactly matches the detected panel address; otherwise, sign in again. Clearing local login data on the System page removes all remembered panel/backend profiles and legacy login records for the current browser origin, while preserving unrelated settings.
+
 Use a trusted device or dedicated browser profile. Enable remote management only after evaluating the exposure of your server.
 
 ## Troubleshooting
@@ -165,6 +178,6 @@ Use a trusted device or dedicated browser profile. Enable remote management only
 
 <div align="center">
 
-[CLI Proxy API](https://github.com/router-for-me/CLIProxyAPI) · [Report an issue](https://github.com/router-for-me/Cli-Proxy-API-Management-Center/issues) · [MIT License](LICENSE)
+[CLI Proxy API](https://github.com/router-for-me/CLIProxyAPI) · [Report an issue](https://github.com/vifar/Cli-Proxy-API-Management-Center/issues) · [MIT License](LICENSE)
 
 </div>

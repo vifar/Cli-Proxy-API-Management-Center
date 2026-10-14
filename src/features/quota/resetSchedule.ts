@@ -129,6 +129,11 @@ export function collectQuotaRowInstants(
     return collectRows((quota as { rows?: WindowLike[] }).rows ?? [], 'row');
   }
 
+  if (provider === 'qoder') {
+    const atMs = (quota as { usage?: { expires_at?: number } | null }).usage?.expires_at;
+    return isUsableMs(atMs) && atMs > 0 ? [{ rowId: 'qoder:usage', atMs, kind: 'window' }] : [];
+  }
+
   if (provider === 'meta') {
     const windows =
       (

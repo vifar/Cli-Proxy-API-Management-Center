@@ -1,0 +1,281 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: '27 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TRACKING_ISSUE_LABEL: upstream-sync-blocked
+
+jobs:
+  sync:
+    runs-on: [self-hosted, Linux, X64, king-server, cpamc]
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "cpamc-fork-sync[bot]"
+          git config user.email "cpamc-fork-sync@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          if git remote get-url upstream > /dev/null 2>&1; then
+            git remote set-url upstream https://github.com/router-for-me/Cli-Proxy-API-Management-Center.git
+          else
+            git remote add upstream https://github.com/router-for-me/Cli-Proxy-API-Management-Center.git
+          fi
+
+      - name: Fetch upstream
+        run: git fetch upstream main
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          LOCAL=$(git rev-parse HEAD)
+          UPSTREAM_MERGE_BASE=$(git merge-base HEAD upstream/main || echo "none")
+          UPSTREAM_HEAD=$(git rev-parse upstream/main)
+          UPSTREAM_TAG=$(git ls-remote --tags --refs upstream 'v[0-9]*.[0-9]*.[0-9]*' \
+            | awk '{print $2}' \
+            | sed 's|refs/tags/||' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1 || true)
+          if [ "${UPSTREAM_HEAD}" = "${UPSTREAM_MERGE_BASE}" ]; then
+            HAS_CHANGES=false
+            echo "[i] Fork already contains all upstream commits; nothing to sync."
+          else
+            HAS_CHANGES=true
+            if [ "${UPSTREAM_MERGE_BASE}" = "none" ]; then
+              git log --oneline upstream/main | head -20
+            else
+              git log --oneline "${UPSTREAM_MERGE_BASE}..upstream/main" | head -20
+            fi
+          fi
+          {
+            echo "local=${LOCAL}"
+            echo "upstream_head=${UPSTREAM_HEAD}"
+            echo "upstream_tag=${UPSTREAM_TAG}"
+            echo "merge_base=${UPSTREAM_MERGE_BASE}"
+            echo "has_changes=${HAS_CHANGES}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Close stale tracking issue when fork is back in sync
+        if: steps.check.outputs.has_changes == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          OPEN_ISSUES=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --label "${TRACKING_ISSUE_LABEL}" \
+            --json number \
+            --jq '.[].number' || true)
+          for n in ${OPEN_ISSUES}; do
+            gh issue close "${n}" --repo "${{ github.repository }}" \
+              --comment "Fork is now in sync with upstream. Auto-closing." || true
+          done
+          set -e
+
+      - name: Create sync branch
+        if: steps.check.outputs.has_changes == 'true'
+        id: branch
+        run: |
+          BRANCH="upstream-sync/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+          git checkout -b "${BRANCH}"
+
+      - name: Merge upstream
+        if: steps.check.outputs.has_changes == 'true'
+        id: merge
+        continue-on-error: true
+        run: |
+          set +e
+          MERGE_LOG=$(mktemp)
+          git merge --no-edit upstream/main 2>&1 | tee "${MERGE_LOG}"
+          MERGE_EXIT=${PIPESTATUS[0]}
+          UNMERGED=$(git ls-files -u | awk '{print $4}' | sort -u || true)
+          {
+            echo 'CONFLICT_FILES<<EOF'
+            echo "${UNMERGED}"
+            echo 'EOF'
+            echo 'MERGE_TAIL<<EOF'
+            tail -n 60 "${MERGE_LOG}"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          if [ "${MERGE_EXIT}" -ne 0 ] || [ -n "${UNMERGED}" ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            git merge --abort || true
+          else
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Set up Node.js
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set up Bun
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
+      - name: Record synced upstream version
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true'
+        run: |
+          {
+            echo "UPSTREAM_TAG=${{ steps.check.outputs.upstream_tag }}"
+            echo "UPSTREAM_COMMIT=${{ steps.check.outputs.upstream_head }}"
+          } > .cpamc-fork-upstream.env
+          git add .cpamc-fork-upstream.env
+          git diff --cached --quiet || git commit -m "chore(upstream-sync): record upstream version"
+
+      - name: Gate
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true'
+        id: gate
+        continue-on-error: true
+        run: |
+          set +e
+          set -o pipefail
+          GATE_LOG=$(mktemp)
+          {
+            bun install --frozen-lockfile &&
+              bun run verify
+          } 2>&1 | tee "${GATE_LOG}"
+          GATE_EXIT=${PIPESTATUS[0]}
+          if [ "${GATE_EXIT}" -ne 0 ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo 'GATE_TAIL<<EOF'
+            tail -n 60 "${GATE_LOG}"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          set -e
+
+      - name: Prepare pipeline handoff
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
+        env:
+          BASE_HEAD: ${{ steps.check.outputs.local }}
+        run: git bundle create upstream-sync.bundle HEAD "^${BASE_HEAD}"
+
+      - name: Upload verified integration history
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-sync-${{ github.run_id }}-${{ github.run_attempt }}
+          path: upstream-sync.bundle
+          if-no-files-found: error
+
+      - name: Describe pipeline handoff
+        if: steps.check.outputs.has_changes == 'true' && steps.merge.outputs.passed == 'true' && steps.gate.outputs.passed == 'true'
+        run: |
+          {
+            echo 'Upstream integration passed the frozen install and Bun test/lint/build suite.'
+            echo "Integration HEAD: $(git rev-parse HEAD)"
+            echo 'Download the Git bundle artifact and import HEAD onto a local feature branch.'
+            echo 'Submit that branch through the real no-mistakes pipeline to complete review, test, and document evidence for its current head before opening a PR.'
+            echo 'This workflow prepares integration history; pipeline validation and publication remain pending.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update tracking issue on conflict or gate failure
+        if: |
+          !cancelled() &&
+          steps.check.outputs.has_changes == 'true' &&
+          (
+            steps.merge.outputs.passed != 'true' ||
+            steps.gate.outputs.passed == 'false'
+          )
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          gh label create "${TRACKING_ISSUE_LABEL}" \
+            --color "B60205" \
+            --description "Automated upstream sync is blocked; needs maintainer attention." \
+            --repo "${{ github.repository }}" 2>/dev/null || true
+
+          STATUS=""
+          [ "${{ steps.merge.outputs.passed }}" != "true" ] && STATUS="${STATUS}- :warning: merge conflict or merge failure\n"
+          [ "${{ steps.gate.outputs.passed }}" = "false" ] && STATUS="${STATUS}- :x: Bun frozen install or full \`bun run verify\` gate failed\n"
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY=$(cat <<EOF
+          Automated upstream sync is blocked. This issue is the single tracking place and will be auto-closed once main contains the upstream commits after pipeline validation and merge.
+
+          **Latest blocked attempt** ($(date -u +%Y-%m-%dT%H:%M:%SZ))
+
+          - Upstream HEAD: \`${{ steps.check.outputs.upstream_head }}\`
+          - Upstream tag: \`${{ steps.check.outputs.upstream_tag }}\`
+          - Sync branch: \`${{ steps.branch.outputs.name }}\`
+          - Workflow run: ${RUN_URL}
+
+          ### Gate status
+          ${STATUS}
+
+          <details><summary>Conflict files</summary>
+
+          \`\`\`
+          ${CONFLICT_FILES:-<none>}
+          \`\`\`
+
+          </details>
+
+          <details><summary>Merge tail</summary>
+
+          \`\`\`
+          ${MERGE_TAIL:-<no merge log captured>}
+          \`\`\`
+
+          </details>
+
+          <details><summary>Gate tail</summary>
+
+          \`\`\`
+          ${GATE_TAIL:-<no gate log captured>}
+          \`\`\`
+
+          </details>
+
+          EOF
+          )
+
+          ISSUE=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --label "${TRACKING_ISSUE_LABEL}" \
+            --json number \
+            --jq '.[0].number' || true)
+
+          if [ -z "${ISSUE}" ] || [ "${ISSUE}" = "null" ]; then
+            gh issue create \
+              --repo "${{ github.repository }}" \
+              --title "upstream-sync blocked: needs maintainer attention" \
+              --label "${TRACKING_ISSUE_LABEL}" \
+              --assignee "${GITHUB_REPOSITORY_OWNER}" \
+              --body "${BODY}"
+          else
+            gh issue comment "${ISSUE}" --repo "${{ github.repository }}" --body "${BODY}"
+          fi
+          set -e

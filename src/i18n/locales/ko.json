@@ -97,6 +97,7 @@
     "status": "연결 상태:"
   },
   "nav": {
+    "usage_statistics": "사용 통계",
     "dashboard": "대시보드",
     "quick_start": "빠른 시작",
     "ai_providers": "AI 공급자",
@@ -117,6 +118,7 @@
     "control": "제어"
   },
   "nav_meta": {
+    "usage_statistics": "요청 및 토큰 사용량",
     "dashboard": "운영 개요",
     "quick_start": "APIKEY.FUN 설정",
     "ai_providers": "업스트림 모델 라우팅",
@@ -217,6 +219,7 @@
     "routing_strategy_fill_first": "fill-first (우선 채우기)"
   },
   "auth_files": {
+    "filter_qoder": "Qoder",
     "title": "인증 파일 관리",
     "meta_total": "자격 증명 {{count}}개",
     "meta_active": "활성 {{count}}개",
@@ -798,6 +801,16 @@
     "upgrade_required_desc": "현재 서버는 OAuth 모델 별칭 API를 지원하지 않습니다. 최신 버전의 CLI Proxy API(CPA)로 업그레이드하세요."
   },
   "auth_login": {
+    "qoder_oauth_title": "Qoder OAuth",
+    "qoder_oauth_button": "Qoder 로그인 시작",
+    "qoder_oauth_hint": "기기 인증 흐름으로 Qoder에 로그인하고 생성된 인증 정보를 자동으로 저장합니다.",
+    "qoder_oauth_url_label": "인증 URL:",
+    "qoder_open_link": "링크 열기",
+    "qoder_copy_link": "링크 복사",
+    "qoder_oauth_status_waiting": "인증 대기 중...",
+    "qoder_oauth_status_success": "인증 성공!",
+    "qoder_oauth_status_error": "인증 실패:",
+    "qoder_oauth_start_error": "Qoder OAuth를 시작하지 못했습니다:",
     "devin_oauth_cancel": "Devin 로그인 취소",
     "devin_oauth_cancelled": "Devin 로그인이 취소되었습니다.",
     "devin_oauth_cancel_error": "Devin 로그인 취소 실패:",
@@ -1380,6 +1393,8 @@
           "antigravity_signature_strict_desc": "서명 캐시가 비활성화된 경우에만 적용되며, 전체 Claude protobuf 트리를 검증합니다."
         },
         "headers": {
+          "codex_identity_confuse": "Codex ID 변환",
+          "codex_identity_confuse_desc": "fill-first 라우팅 또는 세션 고정 사용 시 선택한 인증 정보에 맞춰 Codex prompt_cache_key와 설치 ID를 다시 매핑합니다.",
           "title": "헤더 기본값",
           "description": "클라이언트에서 생략된 경우 Claude 및 Codex OAuth 요청에 사용할 기본 헤더입니다.",
           "claude_title": "Claude OAuth 헤더 기본값",
@@ -2224,6 +2239,44 @@
     "modelCatalog": {
       "notLoaded": "로드되지 않음"
     }
+  },
+  "qoder_quota": {
+    "title": "Qoder 할당량",
+    "empty_title": "Qoder 인증 파일 없음",
+    "empty_desc": "남은 할당량을 확인하려면 Qoder에 로그인하세요.",
+    "idle": "할당량을 새로 고치려면 클릭하세요",
+    "loading": "할당량 불러오는 중...",
+    "load_failed": "할당량을 불러오지 못했습니다: {{message}}",
+    "empty_data": "Qoder 할당량 스냅샷이 없습니다. Qoder 모델 동기화 후 인증 파일을 새로 고치세요.",
+    "refresh_button": "할당량 새로 고침",
+    "fetch_all": "모두 불러오기",
+    "usage_label": "사용량",
+    "expires_at": "만료 {{time}}",
+    "org_resource_remaining": "조직 리소스 잔량",
+    "quota_exceeded": "할당량 초과",
+    "unit_default": "크레딧"
+  },
+  "usage_stats": {
+    "title": "사용 통계",
+    "subtitle": "프록시 런타임의 요청 및 토큰 사용량입니다.",
+    "refresh": "새로 고침",
+    "last_updated": "마지막 업데이트",
+    "load_failed": "사용 통계를 불러오지 못했습니다",
+    "total_requests": "총 요청",
+    "total_tokens": "총 토큰",
+    "success": "성공",
+    "failure": "실패",
+    "requests_by_hour": "시간별 요청",
+    "tokens_by_hour": "시간별 토큰",
+    "top_models": "상위 모델",
+    "api_breakdown": "API별 통계",
+    "api": "API",
+    "model": "모델",
+    "requests": "요청",
+    "tokens": "토큰",
+    "failures": "실패",
+    "models": "모델",
+    "no_data": "사용 데이터 없음"
   },
   "claude_reset": {
     "expiry_title": "수동 초기화 만료 시각 ({{timezone}})",

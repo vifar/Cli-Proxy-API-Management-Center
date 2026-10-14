@@ -67,6 +67,31 @@ describe('generic plugin quota', () => {
     resetPluginQuotaRouteCache();
   });
 
+  test('never sends an old credential to a replacement connection after a pending plugin list', async () => {
+    apiClient.setConfig({ apiBase: 'https://a.invalid', managementKey: 'fixture-a' });
+    let resolve!: (value: PluginListResponse) => void;
+    list.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    const post = spyOn(apiClient, 'post').mockResolvedValue({});
+    try {
+      const request = fetchPluginQuota(
+        { name: 'a.json', authIndex: 'account-a', quotaProvider: 'kiro' },
+        i18n.t
+      );
+      apiClient.setConfig({ apiBase: 'https://b.invalid', managementKey: 'fixture-b' });
+      resolve(pluginList([quotaPlugin()]));
+      await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+      expect(post).not.toHaveBeenCalled();
+    } finally {
+      post.mockRestore();
+      apiClient.setConfig({ apiBase: '', managementKey: '' });
+    }
+  });
+
   test('keeps built-in quota cards when a plugin also advertises quota', () => {
     const builtIns = QUOTA_TAB_ORDER.filter((type) => type !== 'plugin');
     expect([...BUILT_IN_QUOTA_PROVIDERS].sort()).toEqual([...builtIns].sort());
