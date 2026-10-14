@@ -4,7 +4,7 @@
 
 import type { TypeColorSet } from '@/types';
 
-// Theme colors for type badges — keep in sync with authFiles/constants.ts
+// Shared theme colors for type badges; authFiles/constants.ts re-exports these.
 export const TYPE_COLORS: Record<string, TypeColorSet> = {
   qwen: {
     light: { bg: '#ede5fd', text: '#5530c7' },

@@ -60,9 +60,6 @@ function fromBase64(base64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * 加密数据
- */
 export function obfuscateData(value: string): string {
   if (!value) return value;
 
@@ -76,9 +73,6 @@ export function obfuscateData(value: string): string {
   }
 }
 
-/**
- * 解密数据
- */
 export function deobfuscateData(payload: string): string {
   if (!payload || !payload.startsWith(ENC_PREFIX)) {
     return payload;
@@ -95,9 +89,6 @@ export function deobfuscateData(payload: string): string {
   }
 }
 
-/**
- * 检查是否已加密
- */
 export function isObfuscated(value: string): boolean {
   return value?.startsWith(ENC_PREFIX) || false;
 }
