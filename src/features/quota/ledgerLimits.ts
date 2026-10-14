@@ -51,10 +51,10 @@ interface WindowLike {
  * Account-wide window first, then payload order — the provider already lists
  * the rolling window ahead of model-scoped ones.
  */
-const poolFirst = (limits: LedgerLimit[]): LedgerLimit[] => [
-  ...limits.filter((limit) => POOL_WINDOW_IDS.has(limit.id)),
-  ...limits.filter((limit) => !POOL_WINDOW_IDS.has(limit.id)),
-];
+const poolFirst = (limits: LedgerLimit[]): LedgerLimit[] => {
+  const pool = pickPoolLimit(limits);
+  return pool ? [pool, ...limits.filter((limit) => limit !== pool)] : limits;
+};
 
 export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown): LedgerLimit[] {
   const state = quota as { status?: string } | undefined;

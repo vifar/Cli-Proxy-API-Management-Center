@@ -31,6 +31,76 @@ const claudeQuota = {
 };
 
 describe('collectLedgerLimits', () => {
+  test('promotes Kimi longest window and preserves every other payload position', () => {
+    const limits = collectLedgerLimits('kimi', {
+      status: 'success',
+      rows: [
+        { id: 'limit-0', used: 2, limit: 10, periodHours: 5 },
+        { id: 'limit-1', used: 3, limit: 10, periodHours: 24 },
+        { id: 'summary', used: 4, limit: 10, periodHours: 168 },
+        { id: 'limit-2', used: 5, limit: 10, periodHours: 168 },
+      ],
+    });
+    expect(limits.map((limit) => limit.id)).toEqual(['summary', 'limit-0', 'limit-1', 'limit-2']);
+    expect(limits.map((limit) => limit.remaining)).toEqual([60, 80, 70, 50]);
+  });
+
+  test('promotes unknown Antigravity longest bucket across groups without substituting it', () => {
+    const limits = collectLedgerLimits('antigravity', {
+      status: 'success',
+      groups: [
+        {
+          buckets: [
+            { id: 'short', remainingFraction: 0.8, periodHours: 5 },
+            { id: 'medium', remainingFraction: 0.7, periodHours: 24 },
+          ],
+        },
+        {
+          buckets: [
+            { id: 'provider-long', remainingFraction: null, periodHours: 168 },
+            { id: 'last', remainingFraction: 0.5, periodHours: 5 },
+          ],
+        },
+      ],
+    });
+    expect(limits.map((limit) => limit.id)).toEqual(['provider-long', 'short', 'medium', 'last']);
+    expect(limits[0].remaining).toBeNull();
+    expect(pickPoolLimit(limits)).toBe(limits[0]);
+  });
+
+  test('promotes named account windows while keeping sibling limits in payload order', () => {
+    for (const provider of ['claude', 'codex', 'devin'] as const) {
+      const accountId = provider === 'claude' ? 'seven-day' : 'weekly';
+      const limits = collectLedgerLimits(provider, {
+        status: 'success',
+        windows: [
+          { id: 'model', usedPercent: 10, remainingPercent: 90, periodHours: 200 },
+          { id: 'short', usedPercent: 20, remainingPercent: 80, periodHours: 5 },
+          { id: accountId, usedPercent: null, remainingPercent: null, periodHours: 168 },
+          { id: 'last', usedPercent: 30, remainingPercent: 70, periodHours: 24 },
+        ],
+      });
+      expect(limits.map((limit) => limit.id)).toEqual([accountId, 'model', 'short', 'last']);
+      expect(limits[0].remaining).toBeNull();
+    }
+    const meta = collectLedgerLimits('meta', {
+      status: 'success',
+      data: {
+        windows: [
+          { id: 'window', usedPercent: 10, durationMinutes: 300 },
+          { id: 'weekly', usedPercent: 20 },
+        ],
+      },
+    });
+    expect(meta.map((limit) => limit.id)).toEqual(['weekly', 'window']);
+    const xai = collectLedgerLimits('xai', {
+      status: 'success',
+      billing: { periodType: 'weekly', usagePercent: 20 },
+    });
+    expect(xai.map((limit) => limit.id)).toEqual(['weekly']);
+    expect(collectLedgerLimits('kimi', { status: 'success', rows: [] })).toEqual([]);
+  });
+
   test('preserves Kimi duration and index label interpolation', () => {
     const limits = collectLedgerLimits('kimi', {
       status: 'success',

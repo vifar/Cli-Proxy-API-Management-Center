@@ -215,21 +215,18 @@
 .entry {
   min-width: 0;
 }
-.timelineDetails {
+.timelineSection {
   padding-top: 18px;
   margin-top: 10px;
   border-top: 1px solid var(--border-color);
   min-width: 0;
 }
-.timelineDetails > summary {
-  cursor: pointer;
+.timelineTitle {
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
+  font-weight: normal;
   padding-bottom: 18px;
-}
-.timelineDetails > summary:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 3px;
 }
 
 /* ---------- 分页 ---------- */

@@ -663,15 +663,15 @@ export function QuotaPage() {
         )}
 
         {/* 时间线只比较当前页凭证，避免大量凭证一次性生成无界泳道。 */}
-        <details className={styles.timelineDetails}>
-          <summary>{t('quota_management.windows_title')}</summary>
+        <section className={styles.timelineSection}>
+          <h2 className={styles.timelineTitle}>{t('quota_management.windows_title')}</h2>
           <QuotaTimeline
             entries={pageItems}
             quotaFor={getQuota}
             displayNameFor={showEmails ? displayNameFor : maskQuotaIdentity}
             resolvedTheme={resolvedTheme}
           />
-        </details>
+        </section>
       </section>
     </div>
   );
