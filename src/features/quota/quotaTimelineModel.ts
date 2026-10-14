@@ -482,7 +482,7 @@ export function buildTimelineLane(input: TimelineLaneInput): TimelineLane {
     // Antigravity reports the fraction REMAINING, not percent used.
     const remainingOf = (bucket: AntigravityBucketLike) =>
       typeof bucket.remainingFraction === 'number'
-        ? clampPercent(Math.round(bucket.remainingFraction * 100))
+        ? clampPercent(bucket.remainingFraction * 100)
         : null;
 
     return {
@@ -505,7 +505,7 @@ export function buildTimelineLane(input: TimelineLaneInput): TimelineLane {
 
     // Kimi reports raw counts; remaining is derived.
     const remainingOf = (row: KimiRowLike) =>
-      row.limit > 0 ? clampPercent(Math.round(((row.limit - row.used) / row.limit) * 100)) : null;
+      row.limit > 0 ? clampPercent(((row.limit - row.used) / row.limit) * 100) : null;
 
     return {
       ...empty,

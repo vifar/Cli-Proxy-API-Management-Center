@@ -5,6 +5,8 @@ import {
   formatCompactDuration,
   pickPoolLimit,
 } from '../src/features/quota/ledgerLimits';
+import { projectPool } from '../src/features/quota/quotaForecast';
+import { buildTimelineLane } from '../src/features/quota/quotaTimelineModel';
 
 const HOUR = 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 13, 12);
@@ -79,7 +81,7 @@ describe('collectLedgerLimits', () => {
     expect(collectLedgerLimits('plugin', { status: 'loading', groups: [] })).toEqual([]);
   });
 
-  test('Qoder snapshot uses fractional usage and expiry without inventing recurrence', () => {
+  test('Qoder snapshot normalizes usage without treating expiry as replenishment', () => {
     expect(
       collectLedgerLimits('qoder', {
         status: 'success',
@@ -91,19 +93,81 @@ describe('collectLedgerLimits', () => {
         label: '',
         labelKey: 'qoder_quota.usage_label',
         remaining: 75,
-        resetAtMs: NOW + 9 * HOUR,
+        resetAtMs: null,
         periodHours: null,
       },
     ]);
     expect(collectLedgerLimits('qoder', { status: 'success', usage: null })).toEqual([]);
     const exhausted = collectLedgerLimits('qoder', {
       status: 'success',
-      usage: { percentage: 1.25, expires_at: 0 },
+      usage: { percentage: 1.25, expires_at: NOW + 9 * HOUR },
     });
     expect(exhausted[0].remaining).toBe(0);
     expect(exhausted[0].resetAtMs).toBeNull();
     expect(blockedUntilMs(exhausted, NOW)).toBeNull();
+    const projection = projectPool(
+      exhausted.map((limit) => ({ ...limit, remaining: limit.remaining! })),
+      0,
+      NOW,
+      24 * HOUR
+    );
+    expect(projection.nextReset).toBeNull();
+    expect(projection.points.every((point) => point.value === 0)).toBe(true);
   });
+
+  test.each(['antigravity', 'plugin', 'kimi'] as const)(
+    '%s preserves small positive quota for exhaustion checks, forecasting, and timelines',
+    (provider) => {
+      const quota =
+        provider === 'kimi'
+          ? {
+              status: 'success',
+              rows: [
+                {
+                  id: 'account',
+                  label: 'Account',
+                  used: 999,
+                  limit: 1000,
+                  resetAtMs: NOW + HOUR,
+                  periodHours: 168,
+                },
+              ],
+            }
+          : {
+              status: 'success',
+              groups: [
+                {
+                  buckets: [
+                    {
+                      id: 'account',
+                      label: 'Account',
+                      remainingFraction: 0.004,
+                      resetAtMs: NOW + HOUR,
+                      periodHours: 168,
+                    },
+                  ],
+                },
+              ],
+            };
+      const expectedRemaining = provider === 'kimi' ? 0.1 : 0.4;
+      const limits = collectLedgerLimits(provider, quota);
+      expect(limits[0].remaining).toBeCloseTo(expectedRemaining);
+      expect(limits.some((limit) => limit.remaining !== null && limit.remaining <= 0)).toBe(false);
+      expect(blockedUntilMs(limits, NOW)).toBeNull();
+      const pool = pickPoolLimit(limits)!;
+      const projection = projectPool(
+        [{ ...pool, remaining: pool.remaining! }],
+        expectedRemaining,
+        NOW,
+        HOUR / 2
+      );
+      expect(projection.emptyAtMs).toBeNull();
+      expect(projection.points.at(-1)!.value).toBeCloseTo(expectedRemaining / 2);
+      const lane = buildTimelineLane({ provider, quota, name: 'fixture', displayName: 'Fixture' });
+      expect(lane.remaining).toBeCloseTo(expectedRemaining);
+      expect(lane.limits[0].remaining).toBeCloseTo(expectedRemaining);
+    }
+  );
 
   test('promotes Kimi longest window and preserves every other payload position', () => {
     const limits = collectLedgerLimits('kimi', {

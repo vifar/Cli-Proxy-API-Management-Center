@@ -123,7 +123,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
         label: bucket.label ?? '',
         remaining:
           typeof bucket.remainingFraction === 'number'
-            ? clampPercent(Math.round(bucket.remainingFraction * 100))
+            ? clampPercent(bucket.remainingFraction * 100)
             : null,
         resetAtMs: usableMs(bucket.resetAtMs),
         periodHours: usableMs(bucket.periodHours),
@@ -132,9 +132,8 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
   }
 
   if (provider === 'qoder') {
-    const usage = (quota as { usage?: { percentage?: number; expires_at?: number } | null }).usage;
+    const usage = (quota as { usage?: { percentage?: number } | null }).usage;
     if (!usage) return [];
-    const expiry = usableMs(usage.expires_at);
     return [
       {
         id: 'usage',
@@ -143,7 +142,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
         remaining: remainingFromUsed(
           typeof usage.percentage === 'number' ? usage.percentage * 100 : null
         ),
-        resetAtMs: expiry !== null && expiry > 0 ? expiry : null,
+        resetAtMs: null,
         periodHours: null,
       },
     ];
@@ -173,7 +172,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
         labelParams: row.labelParams,
         remaining:
           row.limit > 0
-            ? clampPercent(Math.round(((row.limit - row.used) / row.limit) * 100))
+            ? clampPercent(((row.limit - row.used) / row.limit) * 100)
             : null,
         resetAtMs: usableMs(row.resetAtMs),
         periodHours: usableMs(row.periodHours),
