@@ -32,6 +32,50 @@ const document = parseDocument(
 const workflow = document.toJS() as Workflow;
 const steps = workflow.jobs.sync.steps;
 
+test('remote setup supports fresh and reused checkouts and fetches intended upstream', () => {
+  const cwd = mkdtempSync(resolve(root, '.upstream-sync-test-'));
+  const upstreamUrl = 'https://github.com/router-for-me/Cli-Proxy-API-Management-Center.git';
+  const env = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_CONFIG_NOSYSTEM: '1',
+  };
+  const run = (directory: string, command: string, args: string[]): string => {
+    const result = spawnSync(command, args, { cwd: directory, env, encoding: 'utf8' });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+    return result.stdout.trim();
+  };
+  const git = (...args: string[]) => run(cwd, 'git', args);
+  try {
+    git('init', '-b', 'main');
+    git('config', 'user.name', 'Workflow Test');
+    git('config', 'user.email', 'workflow-test@example.invalid');
+    writeFileSync(resolve(cwd, 'upstream.txt'), 'intended upstream');
+    git('add', 'upstream.txt');
+    git('commit', '-m', 'upstream');
+    const upstreamHead = git('rev-parse', 'HEAD');
+    const checkout = resolve(cwd, 'checkout');
+    git('init', '-b', 'main', checkout);
+    const checkoutGit = (...args: string[]) => run(checkout, 'git', args);
+    checkoutGit('config', `url.${cwd}.insteadOf`, upstreamUrl);
+    const setup = steps.find((step) => step.name === 'Add upstream remote')!;
+    const fetch = steps.find((step) => step.name === 'Fetch upstream')!;
+    for (const state of ['absent', 'correct', 'stale']) {
+      if (state === 'stale') {
+        checkoutGit('remote', 'set-url', 'upstream', resolve(cwd, 'missing-repository'));
+      }
+      run(checkout, 'bash', ['-e', '-o', 'pipefail', '-c', setup.run!]);
+      expect(checkoutGit('config', '--get', 'remote.upstream.url')).toBe(upstreamUrl);
+      run(checkout, 'bash', ['-e', '-o', 'pipefail', '-c', fetch.run!]);
+      expect(checkoutGit('rev-parse', 'upstream/main')).toBe(upstreamHead);
+      expect(checkoutGit('show', 'upstream/main:upstream.txt')).toBe('intended upstream');
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}, 30_000);
+
 test('maintenance token cannot publish repository refs or modify contributor PRs', () => {
   expect(document.errors).toEqual([]);
   expect(workflow.permissions).toEqual({ contents: 'read', issues: 'write' });
