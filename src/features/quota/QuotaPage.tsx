@@ -29,7 +29,7 @@ import { QuotaForecast } from './components/QuotaForecast';
 import { QuotaGroupHeader } from './components/QuotaGroupHeader';
 import { QuotaLedgerRow } from './components/QuotaLedgerRow';
 import { collectLedgerLimits, pickPoolLimit } from './ledgerLimits';
-import { getFreshQuotaObservation } from './quotaObservation';
+import { getFreshQuotaObservation, getLatestPoolObservation } from './quotaObservation';
 import {
   appendPoolSample,
   estimateDrainFromHistory,
@@ -400,12 +400,11 @@ export function QuotaPage() {
   // page never records a fake drop.
   useEffect(() => {
     if (!canUseActions || error || !poolSettled || poolCapacity === 0) return;
-    const latest = scopeEntries.reduce<{ t: number; revision: number } | null>((last, entry) => {
-      const observation = freshObservations.current.get(
-        `${entry.type}:${getQuotaCacheKey(entry.file)}`
-      );
-      return observation && observation.revision > (last?.revision ?? 0) ? observation : last;
-    }, null);
+    const latest = getLatestPoolObservation(
+      scopeEntries.map((entry) =>
+        freshObservations.current.get(`${entry.type}:${getQuotaCacheKey(entry.file)}`)
+      )
+    );
     if (!latest || latest.revision <= (sampledRevisions.current.get(tab) ?? 0)) return;
     sampledRevisions.current.set(tab, latest.revision);
     const next = appendPoolSample(readPoolHistory(apiBase, tab), {

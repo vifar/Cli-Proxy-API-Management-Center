@@ -6,7 +6,10 @@ import { useNotificationStore } from '../src/stores/useNotificationStore';
 import { useQuotaStore } from '../src/stores/useQuotaStore';
 import { useQuotaActions } from '../src/features/quota/hooks/useQuotaActions';
 import { useQuotaBatchLoader } from '../src/features/quota/hooks/useQuotaBatchLoader';
-import { getFreshQuotaObservation } from '../src/features/quota/quotaObservation';
+import {
+  getFreshQuotaObservation,
+  getLatestPoolObservation,
+} from '../src/features/quota/quotaObservation';
 import { appendPoolSample, estimateDrainFromHistory } from '../src/features/quota/quotaForecast';
 import { buildXaiBillingSummary } from '../src/utils/quota';
 import { collectLedgerLimits, pickPoolLimit } from '../src/features/quota/ledgerLimits';
@@ -47,6 +50,62 @@ afterEach(() => {
   useNotificationStore.setState({ notifications: [] });
   useNotificationStore.getState().hideConfirmation();
 });
+
+test.each([0, 1])(
+  'settled batch uses the latest completion when credential %i finishes last',
+  async (slowIndex) => {
+    const early = Date.UTC(2026, 9, 13, 13);
+    const late = early + 4 * 60_000;
+    const clock = spyOn(Date, 'now').mockReturnValue(early);
+    const files: AuthFileItem[] = [
+      { name: 'xai-a.json', type: 'xai' },
+      { name: 'xai-b.json', type: 'xai' },
+    ];
+    const adapter = QUOTA_ADAPTERS.xai;
+    const data = buildXaiBillingSummary({ creditUsagePercent: 10 })!;
+    const completions = new Map<string, (value: unknown) => void>();
+    spyOn(adapter, 'fetchQuota').mockImplementation(
+      (file) =>
+        new Promise((resolve) => {
+          completions.set(file.name, resolve);
+        })
+    );
+    spyOn(adapter, 'enrichQuota').mockResolvedValue(data);
+    const observations = new Map<string, { t: number; revision: number }>();
+    let revision = 0;
+    const unsubscribe = useQuotaStore.subscribe((current, previous) => {
+      for (const [key, quota] of Object.entries(adapter.storeSelector(current))) {
+        const observation = getFreshQuotaObservation(quota, adapter.storeSelector(previous)[key]);
+        if (observation) observations.set(key, { t: observation.t, revision: ++revision });
+      }
+    });
+    try {
+      const pending = batchLoader().loadQuota(files.map((file) => ({ file, type: 'xai' })));
+      completions.get(files[1 - slowIndex].name)!(data);
+      await Promise.resolve();
+      expect(observations.size).toBe(0);
+      clock.mockReturnValue(late);
+      completions.get(files[slowIndex].name)!(data);
+      await pending;
+      expect(observations.get(files[1 - slowIndex].name)?.t).toBe(early);
+      expect(observations.get(files[slowIndex].name)?.t).toBe(late);
+      for (const order of [files, [...files].reverse()]) {
+        const latest = getLatestPoolObservation(order.map((file) => observations.get(file.name)))!;
+        expect(latest).toEqual({ t: late, revision: 2 });
+        const history = appendPoolSample(
+          [{ t: early - 3_600_000, remaining: 200, capacity: 200 }],
+          { t: latest.t, remaining: 180, capacity: 200 }
+        );
+        expect(history.at(-1)?.t).toBe(late);
+        expect(estimateDrainFromHistory(history, late, 200)).toBeCloseTo(20 / (64 / 60));
+      }
+      expect(getLatestPoolObservation([undefined])).toBeNull();
+      expect(getLatestPoolObservation([])).toBeNull();
+    } finally {
+      unsubscribe();
+    }
+  }
+);
 
 test.each(['individual', 'batch'] as const)(
   '%s quota reads record observation time while later plan enrichment does not',
