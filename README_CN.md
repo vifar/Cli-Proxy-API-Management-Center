@@ -93,6 +93,8 @@ API 地址的自动识别、反向代理子路径及手动修改说明见 [READM
 
 支持 **English、简体中文、繁體中文、Русский、Tiếng Việt 和 한국어**，自动识别浏览器语言，也可手动切换。响应式布局适配桌面、平板与手机，支持现代 Chrome、Firefox、Safari 和 Edge 浏览器。Qoder OAuth 与配额快照需要后端支持 Qoder。
 
+配额页面的自动加载、账本布局与配额池预测说明见 [README.md](README.md#quota-management)。
+
 ## 赞助商
 
 [![APIMart — AI 图片与视频生成 API](./assets/apimart-zh.png)](https://go.apimart.ai/gh-cli-proxy-api-management-center)

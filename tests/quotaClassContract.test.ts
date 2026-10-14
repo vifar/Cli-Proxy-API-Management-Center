@@ -13,6 +13,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { compileString } from 'sass';
+import { fileURLToPath } from 'node:url';
 import { QUOTA_CLASS_KEYS, bindQuotaClasses } from '@/features/quota/types';
 
 const HOSTS = {
@@ -25,7 +27,11 @@ const readHost = (path: string) => Bun.file(new URL(`../${path}`, import.meta.ur
 describe('quota class contract', () => {
   for (const [host, path] of Object.entries(HOSTS)) {
     test(`${host} defines every QuotaClassMap key`, async () => {
-      const css = await readHost(path);
+      const source = await readHost(path);
+      const variables = fileURLToPath(new URL('../src/styles/variables.scss', import.meta.url));
+      const css = compileString(`@use '${variables}' as *;\n${source}`, {
+        url: new URL(`../${path}`, import.meta.url),
+      }).css;
       const missing = QUOTA_CLASS_KEYS.filter(
         (key) => !new RegExp(`^\\s*\\.${key}\\b`, 'm').test(css)
       );
