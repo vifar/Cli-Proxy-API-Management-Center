@@ -125,7 +125,7 @@ test('persisted history belongs to a normalized connection and provider', () => 
     const sample = [{ t: NOW, remaining: 80, capacity: 100 }];
     data.set('quota-pool-history:v1:claude', JSON.stringify(sample));
     expect(readPoolHistory('https://server-b.example', 'claude')).toEqual([]);
-    writePoolHistory('https://server-a.example/v0/management/', 'claude', sample);
+    writePoolHistory('https://server-a.example/v8/management/', 'claude', sample);
     expect(readPoolHistory('https://server-a.example', 'claude')).toEqual(sample);
     expect(readPoolHistory('https://server-b.example', 'claude')).toEqual([]);
     expect(readPoolHistory('https://server-a.example', 'codex')).toEqual([]);

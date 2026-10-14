@@ -74,7 +74,7 @@ describe('per-credential credits', () => {
         },
       })
     );
-    expect(markup).toContain('Not reported');
-    expect(markup).not.toContain('$0.00');
+    expect(markup).toContain('does not expose quota totals');
+    expect(markup).not.toContain('$');
   });
 });

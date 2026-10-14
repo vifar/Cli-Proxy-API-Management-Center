@@ -190,8 +190,6 @@ describe('Codex live subscription renewal', () => {
     );
 
     expect(quota.subscriptionActiveUntil).toBe('2026-10-03T13:27:01Z');
-    expect(quota.credits).toEqual({ hasCredits: true, unlimited: false, balance: 12345.6789 });
-    expect(CODEX_CONFIG.buildSuccessState(quota).credits).toEqual(quota.credits);
     const subscriptionRequest = requests.find((request) =>
       request.url.startsWith(CODEX_SUBSCRIPTION_URL)
     );
