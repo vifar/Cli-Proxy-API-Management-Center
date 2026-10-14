@@ -105,7 +105,12 @@ describe('collectLedgerLimits', () => {
     const limits = collectLedgerLimits('kimi', {
       status: 'success',
       rows: [
-        { labelKey: 'kimi_quota.limit_window', labelParams: { duration: '5h' }, used: 2, limit: 10 },
+        {
+          labelKey: 'kimi_quota.limit_window',
+          labelParams: { duration: '5h' },
+          used: 2,
+          limit: 10,
+        },
         { labelKey: 'kimi_quota.limit_index', labelParams: { index: 1 }, used: 3, limit: 10 },
       ],
     });
@@ -128,8 +133,13 @@ describe('collectLedgerLimits', () => {
   test('unknown account and longest limits never fall back to known smaller limits', () => {
     for (const provider of ['claude', 'codex', 'devin', 'meta'] as const) {
       const limits = [
-        { id: provider === 'claude' ? 'seven-day' : 'weekly', label: '', remaining: null,
-          resetAtMs: NOW + 9 * HOUR, periodHours: 168 },
+        {
+          id: provider === 'claude' ? 'seven-day' : 'weekly',
+          label: '',
+          remaining: null,
+          resetAtMs: NOW + 9 * HOUR,
+          periodHours: 168,
+        },
         { id: 'short', label: '', remaining: 90, resetAtMs: NOW + HOUR, periodHours: 5 },
       ];
       expect(pickPoolLimit(limits)).toBe(limits[0]);

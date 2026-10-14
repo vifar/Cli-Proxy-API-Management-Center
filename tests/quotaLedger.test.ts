@@ -40,10 +40,22 @@ describe('quota ledger', () => {
     const state: ClaudeQuotaState = {
       status: 'success',
       windows: [
-        { id: 'seven-day', label: 'Weekly', usedPercent: 20, resetLabel: '',
-          resetAtMs: 2000000000000, periodHours: 168 },
-        { id: 'seven-day-fable', label: 'Fable', usedPercent: 90, resetLabel: '',
-          resetAtMs: 1999990000000, periodHours: 168 },
+        {
+          id: 'seven-day',
+          label: 'Weekly',
+          usedPercent: 20,
+          resetLabel: '',
+          resetAtMs: 2000000000000,
+          periodHours: 168,
+        },
+        {
+          id: 'seven-day-fable',
+          label: 'Fable',
+          usedPercent: 90,
+          resetLabel: '',
+          resetAtMs: 1999990000000,
+          periodHours: 168,
+        },
       ],
     };
     const credentials: QuotaFileEntry[] = [{ type: 'claude', file: { name: 'claude' } }];
@@ -51,7 +63,8 @@ describe('quota ledger', () => {
     expect(result.total).toBe(80);
     expect(result.resetAtMs).toBe(2000000000000);
     const unknown = summarizeQuotaEntries(credentials, () => ({
-      ...state, windows: [{ ...state.windows[0], usedPercent: null }, state.windows[1]],
+      ...state,
+      windows: [{ ...state.windows[0], usedPercent: null }, state.windows[1]],
     }));
     expect(unknown.total).toBeNull();
     expect(unknown.capacity).toBe(0);
