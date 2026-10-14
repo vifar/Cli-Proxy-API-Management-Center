@@ -15,6 +15,7 @@ import type { AuthFileItem } from '@/types';
 import { getStatusFromError } from '@/utils/quota';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { enrichQuotaInBackground } from '../quotaEnrichment';
+import { buildObservedQuotaState } from '../quotaObservation';
 import { getQuotaMap, getQuotaSetter, type QuotaAdapter, type QuotaCardState } from '../providers';
 
 const getQuotaState = (adapter: QuotaAdapter, file: AuthFileItem): QuotaCardState | undefined =>
@@ -27,7 +28,7 @@ export function useQuotaActions(disableControls: boolean) {
   const [resettingQuotaName, setResettingQuotaName] = useState<string | null>(null);
 
   const refreshQuota = useCallback(
-    async (file: AuthFileItem, adapter: QuotaAdapter) => {
+    async (file: AuthFileItem, adapter: QuotaAdapter, displayName: string) => {
       if (disableControls || file.disabled) return;
       const cacheKey = getQuotaCacheKey(file);
       if (resettingQuotaName === cacheKey) return;
@@ -43,13 +44,13 @@ export function useQuotaActions(disableControls: boolean) {
       try {
         const data = await adapter.fetchQuota(file, t);
         commitIfQuotaCacheCurrent(cacheGeneration, () => {
-          const successState = adapter.buildSuccessState(data);
+          const successState = buildObservedQuotaState(adapter, data);
           setQuota((prev) => ({
             ...prev,
             [cacheKey]: successState,
           }));
           void enrichQuotaInBackground(adapter, file, data, successState, t);
-          showNotification(t('auth_files.quota_refresh_success', { name: file.name }), 'success');
+          showNotification(t('auth_files.quota_refresh_success', { name: displayName }), 'success');
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : t('common.unknown_error');
@@ -60,7 +61,7 @@ export function useQuotaActions(disableControls: boolean) {
             [cacheKey]: adapter.buildErrorState(message, status),
           }));
           showNotification(
-            t('auth_files.quota_refresh_failed', { name: file.name, message }),
+            t('auth_files.quota_refresh_failed', { name: displayName, message }),
             'error'
           );
         });
@@ -70,7 +71,7 @@ export function useQuotaActions(disableControls: boolean) {
   );
 
   const resetQuota = useCallback(
-    (file: AuthFileItem, adapter: QuotaAdapter) => {
+    (file: AuthFileItem, adapter: QuotaAdapter, displayName: string) => {
       const resetQuotaFn = adapter.resetQuota;
       if (!resetQuotaFn) return;
       if (disableControls || file.disabled) return;
@@ -80,7 +81,7 @@ export function useQuotaActions(disableControls: boolean) {
 
       showConfirmation({
         title: t('codex_quota.reset_confirm_title'),
-        message: t('codex_quota.reset_confirm_message', { name: file.name }),
+        message: t('codex_quota.reset_confirm_message', { name: displayName }),
         confirmText: t('codex_quota.reset_confirm_button'),
         variant: 'primary',
         onConfirm: async () => {
@@ -92,15 +93,15 @@ export function useQuotaActions(disableControls: boolean) {
             commitIfQuotaCacheCurrent(cacheGeneration, () => {
               setQuota((prev) => ({
                 ...prev,
-                [cacheKey]: adapter.buildSuccessState(data),
+                [cacheKey]: buildObservedQuotaState(adapter, data),
               }));
-              showNotification(t('codex_quota.reset_success', { name: file.name }), 'success');
+              showNotification(t('codex_quota.reset_success', { name: displayName }), 'success');
             });
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : t('common.unknown_error');
             commitIfQuotaCacheCurrent(cacheGeneration, () => {
               showNotification(
-                t('codex_quota.reset_failed', { name: file.name, message }),
+                t('codex_quota.reset_failed', { name: displayName, message }),
                 'error'
               );
             });

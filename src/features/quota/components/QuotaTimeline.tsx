@@ -93,10 +93,9 @@ export function QuotaTimeline({
     () =>
       entries.map((entry) => ({
         name: getQuotaCacheKey(entry.file),
-        displayName:
-          entry.type === 'devin'
-            ? getQuotaDisplayName(entry.file)
-            : displayNameFor(entry.file.name),
+        displayName: displayNameFor(
+          entry.type === 'devin' ? getQuotaDisplayName(entry.file) : entry.file.name
+        ),
         provider: entry.type,
         quota: quotaFor(entry),
       })),
@@ -358,7 +357,7 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
           {lane.limits.map((limit) => (
             <span key={limit.label} className={styles.laneLimit}>
               {lane.provider === 'meta' ? t(limit.label) : limit.label}{' '}
-              <b>{limit.remaining}%</b>
+              <b>{Math.round(limit.remaining)}%</b>
             </span>
           ))}
         </div>
@@ -403,7 +402,7 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
                 title={`${lane.displayName}\n${formatDay(window.startMs)} ${formatTime(
                   window.startMs
                 )} → ${formatDay(window.endMs)} ${formatTime(window.endMs)}${
-                  window.remaining !== null ? `\n${window.remaining}% remaining` : ''
+                  window.remaining !== null ? `\n${Math.round(window.remaining)}% remaining` : ''
                 }`}
               >
                 {/* Only the API-reported current window has meaningful usage;
@@ -416,7 +415,7 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
                 )}
                 {showLabel && (
                   <span className={styles.windowLabel}>
-                    {window.remaining !== null ? `${window.remaining}% · ` : ''}
+                    {window.remaining !== null ? `${Math.round(window.remaining)}% · ` : ''}
                     {endText}
                   </span>
                 )}

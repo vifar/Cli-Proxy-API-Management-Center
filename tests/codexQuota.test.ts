@@ -26,6 +26,7 @@ const result = (statusCode: number, body: unknown = null): ApiCallResult => ({
 });
 
 const CURRENT_CODEX_USAGE_PAYLOAD: CodexUsagePayload = {
+  credits: { has_credits: true, unlimited: false, balance: '12345.6789000000' },
   plan_type: 'pro',
   rate_limit: {
     allowed: true,

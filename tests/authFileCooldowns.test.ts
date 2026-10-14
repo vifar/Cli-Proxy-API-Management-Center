@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nextProvider } from 'react-i18next';
 import i18n from '../src/i18n/index';
 import { authFilesApi, normalizeAuthFilesResponse } from '../src/services/api/authFiles';
 import { normalizeAuthFileCooldowns } from '../src/services/api/authFileCooldowns';
@@ -220,18 +221,32 @@ describe('cooldown section rendering', () => {
     expect(markup).toContain(i18n.t('auth_files.cooldown_note'));
   });
 
-  test('keeps the reset action contextual and exposes pending state', () => {
-    expect(render(snapshot)).not.toContain(i18n.t('auth_files.cooldown_reset_button'));
+  test.each(['en', 'zh-CN', 'zh-TW', 'ru', 'vi', 'ko'])(
+    'keeps the reset action contextual and exposes pending state in %s',
+    (lng) => {
+      const translations = i18n.cloneInstance({ lng });
+      const renderLocalized = (options: Parameters<typeof render>[1] = {}) =>
+        renderToStaticMarkup(
+          createElement(
+            I18nextProvider,
+            { i18n: translations },
+            createElement(AuthFileCooldownSection, { snapshot, ...options })
+          )
+        );
+      const label = Bun.escapeHTML(translations.t('auth_files.cooldown_reset_button'));
+      const hint = Bun.escapeHTML(translations.t('auth_files.cooldown_reset_hint'));
+      expect(renderLocalized()).not.toContain(label);
 
-    const available = render(snapshot, { onReset: () => {} });
-    expect(available).toContain(i18n.t('auth_files.cooldown_reset_button'));
-    expect(available).toContain(i18n.t('auth_files.cooldown_reset_hint'));
-    expect(available).not.toContain('disabled=""');
+      const available = renderLocalized({ onReset: () => {} });
+      expect(available).toContain(label);
+      expect(available).toContain(`title="${hint}"`);
+      expect(available).not.toContain('disabled=""');
 
-    const pending = render(snapshot, { onReset: () => {}, resetting: true });
-    expect(pending).toContain('disabled=""');
-    expect(pending).toContain('loading-spinner');
-  });
+      const pending = renderLocalized({ onReset: () => {}, resetting: true });
+      expect(pending).toContain('disabled=""');
+      expect(pending).toContain('loading-spinner');
+    }
+  );
 
   test('shows elapsed / refresh confirmation and safely escapes model keys', () => {
     const expired = { ...snapshot, receivedAtMs: receivedAtMs - 100_000 };

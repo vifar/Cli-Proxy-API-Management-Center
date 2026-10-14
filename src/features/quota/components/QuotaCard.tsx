@@ -1,7 +1,7 @@
 /**
  * 额度卡片：头部（提供商图标 + mono 文件名）+ 四态 body + 动作 footer。
  *
- * - idle：整个 body 是一个点击加载按钮（上游直连有速率考虑，不自动拉取）；
+ * - idle：整个 body 是一个点击加载按钮；
  * - loading：双幽灵行骨架（aria-busy，文字等价视觉隐藏）；
  * - error：失败色条 + footer 刷新即重试；
  * - success：provider Body（穿 QuotaBody.module.scss 全页外衣）。
@@ -26,11 +26,13 @@ import { useClaudeResetGrants } from '../providers/claude/ClaudeResetGrants';
 import { ClaudeResetGrantDetails } from '../providers/claude/ClaudeResetGrantDetails';
 import bodyStyles from './QuotaBody.module.scss';
 import styles from './QuotaCard.module.scss';
+import { maskQuotaIdentity } from '../ledger';
 
 /** 额度页全页外衣：QuotaBody 模块绑定成类型化契约（缺键在模块初始化即抛）。 */
 const quotaClasses = bindQuotaClasses(bodyStyles, 'QuotaBody.module.scss');
 
 export type QuotaCardProps = {
+  showEmails?: boolean;
   entry: QuotaFileEntry;
   quota?: QuotaCardState;
   resolvedTheme: ResolvedTheme;
@@ -52,11 +54,14 @@ export function QuotaCard(props: QuotaCardProps) {
     entranceDelayMs,
     onRefresh,
     onReset,
+    showEmails = true,
   } = props;
   const { t } = useTranslation();
   const adapter = QUOTA_ADAPTERS[entry.type];
   const file = entry.file;
-  const displayName = getQuotaDisplayName(file);
+  const displayName = showEmails
+    ? getQuotaDisplayName(file)
+    : maskQuotaIdentity(getQuotaDisplayName(file));
 
   // 挂载时捕获一次延迟：后续 props 变 null 不影响本卡（React 19 禁渲染期读 ref）
   const [mountEntranceDelayMs] = useState<number | null>(entranceDelayMs ?? null);
@@ -72,11 +77,14 @@ export function QuotaCard(props: QuotaCardProps) {
     entry.type === 'claude' && status !== 'idle',
     !canRefresh || loading || resetting,
     quota,
-    onRefresh
+    onRefresh,
+    displayName
   );
   const providerType =
     entry.type === 'plugin'
-      ? String(file.quotaProvider ?? file['quota_provider'] ?? file.provider ?? file.type ?? 'plugin')
+      ? String(
+          file.quotaProvider ?? file['quota_provider'] ?? file.provider ?? file.type ?? 'plugin'
+        )
       : entry.type;
   const iconSrc = getAuthFileIcon(providerType, resolvedTheme);
   const typeLabel = getTypeLabel(t, providerType);

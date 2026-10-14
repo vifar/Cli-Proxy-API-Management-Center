@@ -16,16 +16,16 @@ import { getQuotaCacheKey } from '@/utils/quota/identity';
 import type { QuotaFileEntry } from '../logic';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from '../providers';
 import { enrichQuotaInBackground } from '../quotaEnrichment';
+import { buildObservedQuotaState } from '../quotaObservation';
 import type { QuotaProviderType } from '../providers/types';
 
-interface BatchFetchResult {
+type BatchFetchResult = {
   name: string;
   cacheKey: string;
-  status: 'success' | 'error';
-  data?: unknown;
-  error?: string;
-  errorStatus?: number;
-}
+} & (
+  | { status: 'success'; data: unknown; state: QuotaCardState }
+  | { status: 'error'; error: string; errorStatus?: number }
+);
 
 export function useQuotaBatchLoader() {
   const { t } = useTranslation();
@@ -70,7 +70,13 @@ export function useQuotaBatchLoader() {
                 const cacheKey = getQuotaCacheKey(file);
                 try {
                   const data = await adapter.fetchQuota(file, t);
-                  return { name: file.name, cacheKey, status: 'success', data };
+                  return {
+                    name: file.name,
+                    cacheKey,
+                    status: 'success',
+                    data,
+                    state: buildObservedQuotaState(adapter, data),
+                  };
                 } catch (err: unknown) {
                   const message = err instanceof Error ? err.message : t('common.unknown_error');
                   return {
@@ -95,7 +101,7 @@ export function useQuotaBatchLoader() {
                   () => {
                     nextState[result.cacheKey] =
                       result.status === 'success'
-                        ? adapter.buildSuccessState(result.data)
+                        ? result.state
                         : adapter.buildErrorState(
                             result.error || t('common.unknown_error'),
                             result.errorStatus

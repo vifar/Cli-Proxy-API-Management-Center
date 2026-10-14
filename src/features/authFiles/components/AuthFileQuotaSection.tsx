@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { IconRefreshCw } from '@/components/ui/icons';
 import { bindQuotaClasses } from '@/features/quota/types';
 import { QUOTA_ADAPTERS, type QuotaCardState } from '@/features/quota/providers';
+import { buildObservedQuotaState } from '@/features/quota/quotaObservation';
 import styles from './AuthFileQuota.module.scss';
 
 /** 认证文件卡片外衣：紧凑额度样式绑定成类型化契约（缺键在模块初始化即抛）。 */
@@ -79,7 +80,7 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
       commitIfQuotaCacheCurrent(cacheGeneration, () => {
         updateQuotaState((prev) => ({
           ...prev,
-          [cacheKey]: adapter.buildSuccessState(data),
+          [cacheKey]: buildObservedQuotaState(adapter, data),
         }));
         showNotification(t('auth_files.quota_refresh_success', { name: file.name }), 'success');
       });
@@ -131,7 +132,7 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
           commitIfQuotaCacheCurrent(cacheGeneration, () => {
             updateQuotaState((prev) => ({
               ...prev,
-              [cacheKey]: adapter.buildSuccessState(data),
+              [cacheKey]: buildObservedQuotaState(adapter, data),
             }));
             showNotification(t('codex_quota.reset_success', { name: file.name }), 'success');
           });

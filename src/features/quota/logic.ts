@@ -52,7 +52,6 @@ export const resolveQuotaProviderType = (file: AuthFileItem): QuotaProviderType 
     : (QUOTA_TAB_ORDER.find((type) => QUOTA_FILTER_MAP[type](file)) ?? null);
 
 /**
- * 把文件列表归类为额度条目：不支持额度或已停用的文件被过滤，
  * 结果按 QUOTA_TAB_ORDER 分组排列（'全部' tab 的卡片顺序即由此决定）。
  */
 export function classifyQuotaFiles(files: AuthFileItem[]): QuotaFileEntry[] {
@@ -93,8 +92,7 @@ export function filterEntriesBySearch(entries: QuotaFileEntry[], search: string)
  * Credentials with no instant — not loaded yet, failed, or reporting no
  * upcoming reset — sink to the bottom rather than sorting as "now". They keep
  * their incoming provider-grouped order, so the unloaded tail still reads like
- * the default view instead of an arbitrary shuffle. Because loading is
- * click-to-fetch, that tail is most of the list until the user asks for data.
+ * the default view instead of an arbitrary shuffle.
  *
  * The original index is the final tiebreak, making stability an asserted
  * property rather than an assumption about the engine's sort.

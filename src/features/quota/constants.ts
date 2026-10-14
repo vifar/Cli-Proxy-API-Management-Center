@@ -15,7 +15,6 @@ export const QUOTA_TAB_ORDER: readonly QuotaProviderType[] = [
 
 export type QuotaTabId = 'all' | QuotaProviderType;
 
-/** 页级分页固定 20/页，同时把「刷新全部」的上游并发限制在 20。 */
 export const QUOTA_PAGE_SIZE = 20;
 
 /** 卡片排序：默认 = provider 分组序；soonest = 最快恢复优先。 */
