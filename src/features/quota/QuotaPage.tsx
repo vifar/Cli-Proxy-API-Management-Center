@@ -1,8 +1,7 @@
 /**
- * 额度查询页：提供商 tabs + 统一卡网格。
+ * 额度查询页。
  *
  * 保留的行为契约（重设计不改）：
- * - 现有提供商保持点击加载；Devin 首次可见时主动查询一次，不轮询；
  * - cacheGeneration 会话隔离 + request-id 去重（见 useQuotaBatchLoader）；
  * - 文件列表变化后按 provider 剪枝额度缓存（已删文件不残留）；
  * - useHeaderRefresh 单槽位：本页唯一注册者，全局刷新 = 重取文件列表。
@@ -73,10 +72,7 @@ import styles from './QuotaPage.module.scss';
 const TAB_IDS: string[] = ['all', ...QUOTA_TAB_ORDER];
 const SKELETON_CARD_COUNT = 6;
 
-/**
- * Existing providers display filenames; Devin's card and timeline share an
- * identity-aware display label. Keep the filename fallback stable for memoization.
- */
+/** Keep the unmasked timeline callback stable for memoization. */
 const displayNameFor = (name: string) => name;
 
 export function QuotaPage() {
@@ -176,8 +172,7 @@ export function QuotaPage() {
 
   /* ---------- 归类 / 过滤 / 排序 / 分页 ---------- */
 
-  // 只在「最快恢复优先」下订阅分钟时钟。默认序下不门控的话，pageItems 每分钟
-  // 换一次身份，会反复空转下面那个「刷新全部」的 loading 下降沿 effect。
+  // Only recovery sorting needs this minute clock.
   const tick = useNow(sortMode !== 'default');
   const sortNow = sortMode === 'default' ? 0 : tick;
 
@@ -377,10 +372,10 @@ export function QuotaPage() {
   const poolTotal = poolMembers.reduce((sum, member) => sum + member.remaining, 0);
   const poolCapacity = poolMembers.length * 100;
   const [historyVersion, setHistoryVersion] = useState(0);
-  // historyVersion re-reads storage after this page appends a sample.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const poolHistory = useMemo(
     () => readPoolHistory(apiBase, tab),
+    // Sample and session revisions deliberately invalidate the storage snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [apiBase, tab, historyVersion, sessionGeneration]
   );
 

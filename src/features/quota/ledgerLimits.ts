@@ -48,8 +48,7 @@ interface WindowLike {
 }
 
 /**
- * Account-wide window first, then payload order — the provider already lists
- * the rolling window ahead of model-scoped ones.
+ * Promote the selected pool limit without changing the other limits' payload order.
  */
 const poolFirst = (limits: LedgerLimit[]): LedgerLimit[] => {
   const pool = pickPoolLimit(limits);

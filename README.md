@@ -87,9 +87,19 @@ Check the CLI Proxy API server documentation/config comments for the full authen
   - OpenAI-compatible providers (multiple API keys, custom headers, model alias import via `/v1/models`, optional browser-side "chat/completions" test).
 - **Auth Files**: upload/download/delete JSON credentials, filter/search/pagination, runtime-only indicators, view supported models per credential (when the server supports it), manage OAuth excluded models (supports `*` wildcards), configure OAuth model alias mappings.
 - **OAuth**: start OAuth/device flows for Codex, Anthropic/Claude, Antigravity, Kimi, and xAI/Grok; poll status; submit callback URLs or xAI/Grok displayed codes; import Vertex JSON credentials and iFlow cookies.
-- **Quota Management**: manage quota limits and usage for Claude, Antigravity, Codex, Kimi, xAI/Grok, and other providers.
+- **Quota Management**: [quota loading, layouts, and pool forecasts](#quota-management).
 - **Logs**: tail logs with incremental polling, auto-refresh, search, hide management traffic, clear logs; download request error log files.
 - **System**: quick links, update check, request logging toggle, local login data cleanup, and fetch `/v1/models` (grouped view). Requires at least one proxy API key to query models.
+
+### Quota Management
+
+Manage quota limits and usage for Claude, Antigravity, Codex, Kimi, xAI/Grok, and other supported providers. Opening the page automatically loads quota for every supported, enabled credential after the credential list arrives, including credentials on other pages. Returning to the page reuses cached results, including failures, without retrying them automatically. Use **Refresh quota** to retry an individual credential, or **Refresh all** to reload the credential list and refresh quotas across all pages.
+
+The default **Ledger** layout groups credentials by provider and shows the account-wide limit first, followed by the other limits in their reported order. The provider summary's **Show**/**Hide** toggle reveals pool details. Exhausted credentials show a recovery countdown when reset times are known; other limits are dimmed. **Last seen** uses the credential file's modification time. **Resets remaining** shows Codex manual reset credits when reported, with **Reset limits** available for eligible credentials. Switch to **Cards** in the search toolbar for plan, extra-usage, and credit details. Email addresses are masked by default in both layouts and the timeline; **Show emails** reveals them. The timeline stays expanded and compares only the current page's credentials.
+
+The **Pool forecast** follows the selected provider tab and sums each credential's account-wide window: Claude seven-day, Codex weekly, or the longest reported window otherwise. Unknown values are excluded from both the total and capacity; each included credential contributes 100% capacity. **Remaining quota** and **Drain rate** show solid observed history and a dashed projection over the next 1, 3, 7, or 14 days, with the first predicted empty time and next reset gain in the footer when available. The projection assumes constant consumption, spends the soonest-resetting credential first, and repeats resets when their periods are known. Shorter or model-specific limits can block requests before this pool is empty.
+
+History is collected only while the page is open, after fresh quota observations have settled. It is stored in browser `localStorage` separately for each normalized API address and provider tab, without the management key, coalesced within five-minute intervals, and retained for 14 days when new samples are saved. The solid line ends at a recorded observation, so navigating back does not create fresh history. Automatic drain estimates use at least one hour of history for the current uninterrupted pool capacity; otherwise they fall back to current-window usage when enough timing data is available. Expand **Forecast settings** to set a nonnegative manual drain rate (leave blank for automatic estimation) or change the history lookback. Forecast settings are saved in the browser; without available storage, estimates can still use current windows.
 
 ## Tech Stack
 
@@ -146,7 +156,7 @@ bun run dev        # Vite dev server
 bun run build      # tsc + Vite build
 bun run preview    # serve dist locally
 bun run test       # Bun test suite
-bun run lint       # ESLint (fails on warnings)
+bun run lint       # ESLint (reports warnings without failing)
 bun run verify     # test + lint + build
 bun run format     # Prettier
 bun run type-check # tsc --noEmit

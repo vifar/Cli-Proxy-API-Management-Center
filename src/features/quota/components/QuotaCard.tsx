@@ -1,7 +1,7 @@
 /**
  * 额度卡片：头部（提供商图标 + mono 文件名）+ 四态 body + 动作 footer。
  *
- * - idle：整个 body 是一个点击加载按钮（上游直连有速率考虑，不自动拉取）；
+ * - idle：整个 body 是一个点击加载按钮；
  * - loading：双幽灵行骨架（aria-busy，文字等价视觉隐藏）；
  * - error：失败色条 + footer 刷新即重试；
  * - success：provider Body（穿 QuotaBody.module.scss 全页外衣）。
