@@ -13,6 +13,8 @@ import { Select } from '@/components/ui/Select';
 import { DAY_MS, HOUR_MS } from '@/utils/time/durations';
 import {
   drainSeries,
+  currentPoolHistory,
+  normalizeForecastRate,
   projectPool,
   type ForecastPoint,
   type ForecastSettings,
@@ -62,16 +64,16 @@ export function QuotaForecast(props: QuotaForecastProps) {
   );
 
   const observed = useMemo<ForecastPoint[]>(() => {
-    const points = history
-      .filter((sample) => sample.t >= startMs && sample.t < now && sample.capacity === capacity)
+    const points = currentPoolHistory(history, capacity)
+      .filter((sample) => sample.t >= startMs && sample.t < now)
       .map((sample) => ({ t: sample.t, value: sample.remaining }));
     if (members.length > 0) points.push({ t: now, value: total });
     return points;
   }, [history, startMs, now, capacity, members.length, total]);
 
   const drainObserved = useMemo(
-    () => drainSeries(history).filter((point) => point.t >= startMs && point.t <= now),
-    [history, startMs, now]
+    () => drainSeries(history, capacity).filter((point) => point.t >= startMs && point.t <= now),
+    [history, capacity, startMs, now]
   );
 
   const x = (t: number) => ((t - startMs) / (endMs - startMs)) * VIEW_W;
@@ -302,9 +304,8 @@ export function QuotaForecast(props: QuotaForecastProps) {
                 value={settings.rateOverride ?? ''}
                 onChange={(event) => {
                   const value = event.target.value.trim();
-                  const parsed = Number(value);
                   setSettings({
-                    rateOverride: value === '' || !Number.isFinite(parsed) ? null : parsed,
+                    rateOverride: normalizeForecastRate(value === '' ? null : Number(value)),
                   });
                 }}
               />

@@ -45,7 +45,6 @@ export const HISTORY_RETENTION_MS = 14 * 24 * HOUR_MS;
 const SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 /** Drain rates need at least this much observed time to be trusted. */
 const MIN_OBSERVED_MS = HOUR_MS;
-const MAX_RESET_EVENTS = 2000;
 
 /** Append a sample, coalescing bursts and dropping anything past retention. */
 export function appendPoolSample(history: PoolSample[], sample: PoolSample): PoolSample[] {
@@ -60,25 +59,33 @@ export function appendPoolSample(history: PoolSample[], sample: PoolSample): Poo
   return [...kept, sample];
 }
 
+export function currentPoolHistory(history: readonly PoolSample[], capacity: number): PoolSample[] {
+  let start = history.length;
+  while (start > 0 && history[start - 1].capacity === capacity) start -= 1;
+  return history.slice(start);
+}
+
 /**
  * Observed drain in percent per hour over the lookback window.
  *
  * Only decreases count: an increase is a reset or a newly added credential,
- * not negative usage. Pairs spanning a capacity change are skipped.
+ * not negative usage.
  */
 export function estimateDrainFromHistory(
   history: readonly PoolSample[],
   nowMs: number,
+  capacity: number,
   lookbackMs = 24 * HOUR_MS
 ): number | null {
-  const recent = history.filter((sample) => sample.t >= nowMs - lookbackMs && sample.t <= nowMs);
+  const recent = currentPoolHistory(history, capacity).filter(
+    (sample) => sample.t >= nowMs - lookbackMs && sample.t <= nowMs
+  );
   if (recent.length < 2) return null;
   let drained = 0;
   let observed = 0;
   for (let index = 1; index < recent.length; index += 1) {
     const prev = recent[index - 1];
     const next = recent[index];
-    if (prev.capacity !== next.capacity) continue;
     observed += next.t - prev.t;
     drained += Math.max(0, prev.remaining - next.remaining);
   }
@@ -107,13 +114,14 @@ export function estimateDrainFromWindows(
 }
 
 /** Drain rate (percent per hour) for each sample interval, for the drain chart. */
-export function drainSeries(history: readonly PoolSample[]): ForecastPoint[] {
+export function drainSeries(history: readonly PoolSample[], capacity: number): ForecastPoint[] {
+  const recent = currentPoolHistory(history, capacity);
   const out: ForecastPoint[] = [];
-  for (let index = 1; index < history.length; index += 1) {
-    const prev = history[index - 1];
-    const next = history[index];
+  for (let index = 1; index < recent.length; index += 1) {
+    const prev = recent[index - 1];
+    const next = recent[index];
     const hours = (next.t - prev.t) / HOUR_MS;
-    if (hours <= 0 || prev.capacity !== next.capacity) continue;
+    if (hours <= 0) continue;
     out.push({ t: next.t, value: Math.max(0, prev.remaining - next.remaining) / hours });
   }
   return out;
@@ -137,30 +145,26 @@ export function projectPool(
   const total = () => state.reduce((sum, member) => sum + member.remaining, 0);
   const rate = Math.max(0, ratePerHour);
 
-  const events: { t: number; index: number }[] = [];
-  state.forEach((member, index) => {
-    if (member.resetAtMs === null) return;
-    const periodMs = member.periodHours ? member.periodHours * HOUR_MS : null;
+  const periods = state.map((member) =>
+    member.periodHours !== null && Number.isFinite(member.periodHours) && member.periodHours > 0
+      ? member.periodHours * HOUR_MS
+      : null
+  );
+  const nextResets = state.map((member, index) => {
+    if (member.resetAtMs === null || !Number.isFinite(member.resetAtMs)) return Infinity;
+    const periodMs = periods[index];
     let t = member.resetAtMs;
     if (t <= nowMs) {
-      if (!periodMs) return;
-      t += Math.ceil((nowMs - t) / periodMs + Number.EPSILON) * periodMs;
+      if (!periodMs) return Infinity;
+      t += (Math.floor((nowMs - t) / periodMs) + 1) * periodMs;
     }
-    while (t <= endMs && events.length < MAX_RESET_EVENTS) {
-      events.push({ t, index });
-      if (!periodMs) break;
-      t += periodMs;
-    }
+    return t;
   });
-  events.sort((a, b) => a.t - b.t || a.index - b.index);
 
-  const nextResetOf = (index: number, after: number) =>
-    events.find((event) => event.index === index && event.t > after)?.t ?? Infinity;
-
-  const drain = (amount: number, at: number) => {
+  const drain = (amount: number) => {
     let left = amount;
     const order = state
-      .map((member, index) => ({ member, next: nextResetOf(index, at) }))
+      .map((member, index) => ({ member, next: nextResets[index] }))
       .sort((a, b) => a.next - b.next);
     for (const { member } of order) {
       if (left <= 0) break;
@@ -183,19 +187,25 @@ export function projectPool(
       points.push({ t: zeroAt, value: 0 });
       if (emptyAtMs === null) emptyAtMs = zeroAt;
     }
-    drain(amount, cursor);
+    drain(amount);
     cursor = to;
     points.push({ t: to, value: total() });
   };
 
-  for (const event of events) {
-    advance(event.t);
-    const member = state[event.index];
-    const gain = 100 - member.remaining;
-    member.remaining = 100;
-    if (nextReset === null) nextReset = { atMs: event.t, gain };
-    else if (nextReset.atMs === event.t) nextReset.gain += gain;
-    points.push({ t: event.t, value: total() });
+  let resetAt = nextResets.reduce((earliest, t) => Math.min(earliest, t), Infinity);
+  while (resetAt <= endMs) {
+    advance(resetAt);
+    let gain = 0;
+    state.forEach((member, index) => {
+      if (nextResets[index] !== resetAt) return;
+      gain += 100 - member.remaining;
+      member.remaining = 100;
+      const next = resetAt + (periods[index] ?? 0);
+      nextResets[index] = next > resetAt ? next : Infinity;
+    });
+    if (nextReset === null) nextReset = { atMs: resetAt, gain };
+    points.push({ t: resetAt, value: total() });
+    resetAt = nextResets.reduce((earliest, t) => Math.min(earliest, t), Infinity);
   }
   if (cursor < endMs) advance(endMs);
 
@@ -248,6 +258,10 @@ export const DEFAULT_FORECAST_SETTINGS: ForecastSettings = {
   lookbackHours: 24,
 };
 
+export function normalizeForecastRate(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : null;
+}
+
 export function readForecastSettings(): ForecastSettings {
   try {
     const parsed = JSON.parse(
@@ -255,7 +269,7 @@ export function readForecastSettings(): ForecastSettings {
     ) as Partial<ForecastSettings> | null;
     return {
       horizonDays: parsed?.horizonDays ?? DEFAULT_FORECAST_SETTINGS.horizonDays,
-      rateOverride: parsed?.rateOverride ?? DEFAULT_FORECAST_SETTINGS.rateOverride,
+      rateOverride: normalizeForecastRate(parsed?.rateOverride),
       lookbackHours: parsed?.lookbackHours ?? DEFAULT_FORECAST_SETTINGS.lookbackHours,
     };
   } catch {
@@ -265,7 +279,10 @@ export function readForecastSettings(): ForecastSettings {
 
 export function writeForecastSettings(settings: ForecastSettings): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ ...settings, rateOverride: normalizeForecastRate(settings.rateOverride) })
+    );
   } catch {
     // Settings simply won't persist.
   }

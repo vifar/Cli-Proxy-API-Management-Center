@@ -35,6 +35,7 @@ import {
   appendPoolSample,
   estimateDrainFromHistory,
   estimateDrainFromWindows,
+  normalizeForecastRate,
   readForecastSettings,
   readPoolHistory,
   writeForecastSettings,
@@ -260,25 +261,26 @@ export function QuotaPage() {
   const sampledRevisions = useRef(new Map<QuotaTabId, number>());
   const observationRevision = useRef(0);
   useEffect(
-    () => useQuotaStore.subscribe((state, previous) => {
-      if (state.cacheGeneration !== previous.cacheGeneration) {
-        freshObservations.current.clear();
-        sampledRevisions.current.clear();
-        return;
-      }
-      for (const type of QUOTA_TAB_ORDER) {
-        const adapter = QUOTA_ADAPTERS[type];
-        const current = adapter.storeSelector(state);
-        const before = adapter.storeSelector(previous);
-        for (const [key, quota] of Object.entries(current)) {
-          if (quota.status !== 'success' || quota === before[key]) continue;
-          freshObservations.current.set(`${type}:${key}`, {
-            t: Date.now(),
-            revision: ++observationRevision.current,
-          });
+    () =>
+      useQuotaStore.subscribe((state, previous) => {
+        if (state.cacheGeneration !== previous.cacheGeneration) {
+          freshObservations.current.clear();
+          sampledRevisions.current.clear();
+          return;
         }
-      }
-    }),
+        for (const type of QUOTA_TAB_ORDER) {
+          const adapter = QUOTA_ADAPTERS[type];
+          const current = adapter.storeSelector(state);
+          const before = adapter.storeSelector(previous);
+          for (const [key, quota] of Object.entries(current)) {
+            if (quota.status !== 'success' || quota === before[key]) continue;
+            freshObservations.current.set(`${type}:${key}`, {
+              t: Date.now(),
+              revision: ++observationRevision.current,
+            });
+          }
+        }
+      }),
     []
   );
 
@@ -345,8 +347,9 @@ export function QuotaPage() {
   const clock = useNow();
   const [forecastSettings, setForecastSettings] = useState<ForecastSettings>(readForecastSettings);
   const handleForecastSettings = useCallback((next: ForecastSettings) => {
-    setForecastSettings(next);
-    writeForecastSettings(next);
+    const settings = { ...next, rateOverride: normalizeForecastRate(next.rateOverride) };
+    setForecastSettings(settings);
+    writeForecastSettings(settings);
   }, []);
 
   const scopeEntries = useMemo(() => filterEntriesByTab(entries, tab), [entries, tab]);
@@ -415,6 +418,7 @@ export function QuotaPage() {
   const historyRate = estimateDrainFromHistory(
     poolHistory,
     clock,
+    poolCapacity,
     forecastSettings.lookbackHours * 60 * 60 * 1000
   );
   const windowsRate = historyRate === null ? estimateDrainFromWindows(poolMembers, clock) : null;

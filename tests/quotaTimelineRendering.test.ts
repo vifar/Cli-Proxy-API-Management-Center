@@ -5,6 +5,7 @@ import '../src/i18n/index';
 import { QuotaTimeline } from '../src/features/quota/components/QuotaTimeline';
 import type { QuotaFileEntry } from '../src/features/quota/logic';
 import { buildKimiQuotaRows } from '../src/utils/quota';
+import { maskQuotaIdentity } from '../src/features/quota/ledger';
 
 const entries: QuotaFileEntry[] = [
   {
@@ -21,6 +22,42 @@ const baseProps = {
 };
 
 describe('QuotaTimeline rendering', () => {
+  test('masks resolved Devin identities and ordinary filenames in labels and titles', () => {
+    const credentials: QuotaFileEntry[] = [
+      { type: 'devin', file: { type: 'devin', name: 'devin.json', email: 'alice@example.com' } },
+      { type: 'claude', file: { type: 'claude', name: 'bob@example.com.json' } },
+    ];
+    const props = {
+      ...baseProps,
+      entries: credentials,
+      quotaFor: (entry: QuotaFileEntry) => ({
+        status: 'success' as const,
+        windows: [
+          {
+            label: '7-day',
+            usedPercent: 25,
+            remainingPercent: 75,
+            resetAtMs: baseProps.now + 24 * 60 * 60 * 1000,
+            periodHours: 168,
+            id: entry.type === 'devin' ? 'weekly' : 'seven-day',
+          },
+        ],
+      }),
+    };
+    const hidden = renderToStaticMarkup(
+      createElement(QuotaTimeline, {
+        ...props,
+        displayNameFor: maskQuotaIdentity,
+      })
+    );
+    expect(hidden).toContain('devin.json · a•••@e•••.com');
+    expect(hidden).toContain('b•••@e•••.com.json');
+    expect(hidden).not.toContain('alice@example.com');
+    expect(hidden).not.toContain('bob@example.com');
+    const visible = renderToStaticMarkup(createElement(QuotaTimeline, props));
+    expect(visible).toContain('devin.json · alice@example.com');
+    expect(visible).toContain('bob@example.com.json');
+  });
   test('shows the selected period date instead of always labelling it Today', () => {
     const markup = renderToStaticMarkup(
       createElement(QuotaTimeline, {
