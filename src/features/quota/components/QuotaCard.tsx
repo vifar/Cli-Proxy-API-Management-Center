@@ -24,14 +24,12 @@ import { QUOTA_ADAPTERS, type QuotaCardState } from '../providers';
 import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
 import bodyStyles from './QuotaBody.module.scss';
 import styles from './QuotaCard.module.scss';
-import ledgerStyles from './QuotaLedger.module.scss';
 import { maskQuotaIdentity } from '../ledger';
 
 /** 额度页全页外衣：QuotaBody 模块绑定成类型化契约（缺键在模块初始化即抛）。 */
 const quotaClasses = bindQuotaClasses(bodyStyles, 'QuotaBody.module.scss');
 
 export type QuotaCardProps = {
-  ledger?: boolean;
   showEmails?: boolean;
   entry: QuotaFileEntry;
   quota?: QuotaCardState;
@@ -54,7 +52,6 @@ export function QuotaCard(props: QuotaCardProps) {
     entranceDelayMs,
     onRefresh,
     onReset,
-    ledger = false,
     showEmails = true,
   } = props;
   const { t } = useTranslation();
@@ -63,18 +60,6 @@ export function QuotaCard(props: QuotaCardProps) {
   const displayName = showEmails
     ? getQuotaDisplayName(file)
     : maskQuotaIdentity(getQuotaDisplayName(file));
-  const classes = ledger
-    ? {
-        ...quotaClasses,
-        quotaRow: ledgerStyles.quotaRow,
-        quotaRowHeader: ledgerStyles.quotaRowHeader,
-        quotaMeta: ledgerStyles.quotaMeta,
-        quotaResetGroup: ledgerStyles.quotaResetGroup,
-        codexPlan: `${quotaClasses.codexPlan} ${ledgerStyles.plan}`,
-        codexResetCredits: `${quotaClasses.codexResetCredits} ${ledgerStyles.details}`,
-        codexResetCreditsError: `${quotaClasses.codexResetCreditsError} ${ledgerStyles.details}`,
-      }
-    : quotaClasses;
 
   // 挂载时捕获一次延迟：后续 props 变 null 不影响本卡（React 19 禁渲染期读 ref）
   const [mountEntranceDelayMs] = useState<number | null>(entranceDelayMs ?? null);
@@ -100,10 +85,10 @@ export function QuotaCard(props: QuotaCardProps) {
 
   return (
     <article
-      className={`${styles.card} ${ledger ? ledgerStyles.row : ''} ${mountEntranceDelayMs === null ? '' : styles.cardEnter}`}
+      className={`${styles.card} ${mountEntranceDelayMs === null ? '' : styles.cardEnter}`}
       style={entranceStyle}
     >
-      <header className={`${styles.head} ${ledger ? ledgerStyles.identity : ''}`}>
+      <header className={styles.head}>
         <span
           className={styles.iconWrap}
           title={typeLabel}
@@ -124,7 +109,7 @@ export function QuotaCard(props: QuotaCardProps) {
         </span>
       </header>
 
-      <div className={`${styles.body} ${ledger ? ledgerStyles.windows : ''}`}>
+      <div className={styles.body}>
         {status === 'idle' ? (
           <button
             type="button"
@@ -150,14 +135,14 @@ export function QuotaCard(props: QuotaCardProps) {
             {t(`${adapter.i18nPrefix}.load_failed`, { message: errorMessage })}
           </div>
         ) : quota ? (
-          <adapter.Body quota={quota} classes={classes} />
+          <adapter.Body quota={quota} classes={quotaClasses} />
         ) : (
           <div className={styles.idleHint}>{t(`${adapter.i18nPrefix}.idle`)}</div>
         )}
       </div>
 
       {status !== 'idle' && (
-        <footer className={`${styles.actionRow} ${ledger ? ledgerStyles.actions : ''}`}>
+        <footer className={styles.actionRow}>
           {showReset && (
             <button
               type="button"

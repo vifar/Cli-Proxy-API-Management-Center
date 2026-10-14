@@ -80,6 +80,7 @@ const displayNameFor = (name: string) => name;
 
 export function QuotaPage() {
   const { t } = useTranslation();
+  const apiBase = useAuthStore((state) => state.apiBase);
   const connectionStatus = useAuthStore((state) => state.connectionStatus);
   const resolvedTheme: ResolvedTheme = useThemeStore((state) => state.resolvedTheme);
 
@@ -255,6 +256,32 @@ export function QuotaPage() {
     });
   }, [entries, error, filesGeneration, loading, sessionGeneration]);
 
+  const freshObservations = useRef(new Map<string, { t: number; revision: number }>());
+  const sampledRevisions = useRef(new Map<QuotaTabId, number>());
+  const observationRevision = useRef(0);
+  useEffect(
+    () => useQuotaStore.subscribe((state, previous) => {
+      if (state.cacheGeneration !== previous.cacheGeneration) {
+        freshObservations.current.clear();
+        sampledRevisions.current.clear();
+        return;
+      }
+      for (const type of QUOTA_TAB_ORDER) {
+        const adapter = QUOTA_ADAPTERS[type];
+        const current = adapter.storeSelector(state);
+        const before = adapter.storeSelector(previous);
+        for (const [key, quota] of Object.entries(current)) {
+          if (quota.status !== 'success' || quota === before[key]) continue;
+          freshObservations.current.set(`${type}:${key}`, {
+            t: Date.now(),
+            revision: ++observationRevision.current,
+          });
+        }
+      }
+    }),
+    []
+  );
+
   /* ---------- 加载与操作 ---------- */
 
   const { batchLoading, loadQuota } = useQuotaBatchLoader();
@@ -349,20 +376,41 @@ export function QuotaPage() {
   const [historyVersion, setHistoryVersion] = useState(0);
   // historyVersion re-reads storage after this page appends a sample.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const poolHistory = useMemo(() => readPoolHistory(tab), [tab, historyVersion]);
+  const poolHistory = useMemo(
+    () => readPoolHistory(apiBase, tab),
+    [apiBase, tab, historyVersion, sessionGeneration]
+  );
 
   // Sample the pool once every scoped credential has settled, so a half-loaded
   // page never records a fake drop.
   useEffect(() => {
-    if (!poolSettled || poolCapacity === 0) return;
-    const next = appendPoolSample(readPoolHistory(tab), {
-      t: Date.now(),
+    if (!canUseActions || error || !poolSettled || poolCapacity === 0) return;
+    const latest = scopeEntries.reduce<{ t: number; revision: number } | null>((last, entry) => {
+      const observation = freshObservations.current.get(
+        `${entry.type}:${getQuotaCacheKey(entry.file)}`
+      );
+      return observation && observation.revision > (last?.revision ?? 0) ? observation : last;
+    }, null);
+    if (!latest || latest.revision <= (sampledRevisions.current.get(tab) ?? 0)) return;
+    sampledRevisions.current.set(tab, latest.revision);
+    const next = appendPoolSample(readPoolHistory(apiBase, tab), {
+      t: latest.t,
       remaining: poolTotal,
       capacity: poolCapacity,
     });
-    writePoolHistory(tab, next);
+    writePoolHistory(apiBase, tab, next);
     setHistoryVersion((value) => value + 1);
-  }, [poolSettled, poolTotal, poolCapacity, tab]);
+  }, [
+    apiBase,
+    canUseActions,
+    error,
+    getQuota,
+    poolSettled,
+    poolTotal,
+    poolCapacity,
+    scopeEntries,
+    tab,
+  ]);
 
   const historyRate = estimateDrainFromHistory(
     poolHistory,

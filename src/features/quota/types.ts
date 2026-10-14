@@ -8,7 +8,6 @@
  */
 
 export interface QuotaClassMap {
-  quotaResetGroup?: string;
   // 额度行（五个提供商共用）
   quotaRow: string;
   quotaRowHeader: string;

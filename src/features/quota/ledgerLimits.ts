@@ -140,6 +140,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
             id?: string;
             label?: string;
             labelKey?: string;
+            labelParams?: Record<string, string | number>;
             used: number;
             limit: number;
             resetAtMs?: number | null;
@@ -152,6 +153,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
         id: row.id || `row-${index}`,
         label: row.label ?? '',
         labelKey: row.labelKey,
+        labelParams: row.labelParams,
         remaining:
           row.limit > 0
             ? clampPercent(Math.round(((row.limit - row.used) / row.limit) * 100))

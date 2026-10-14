@@ -31,6 +31,20 @@ const claudeQuota = {
 };
 
 describe('collectLedgerLimits', () => {
+  test('preserves Kimi duration and index label interpolation', () => {
+    const limits = collectLedgerLimits('kimi', {
+      status: 'success',
+      rows: [
+        { labelKey: 'kimi_quota.limit_window', labelParams: { duration: '5h' }, used: 2, limit: 10 },
+        { labelKey: 'kimi_quota.limit_index', labelParams: { index: 1 }, used: 3, limit: 10 },
+      ],
+    });
+    expect(limits.map(({ labelKey, labelParams }) => ({ labelKey, labelParams }))).toEqual([
+      { labelKey: 'kimi_quota.limit_window', labelParams: { duration: '5h' } },
+      { labelKey: 'kimi_quota.limit_index', labelParams: { index: 1 } },
+    ]);
+    expect(limits.map((limit) => limit.remaining)).toEqual([80, 70]);
+  });
   test('puts the account window first and converts used to remaining', () => {
     const limits = collectLedgerLimits('claude', claudeQuota);
     expect(limits.map((limit) => limit.id)).toEqual(['seven-day', 'five-hour', 'seven-day-fable']);

@@ -9,7 +9,6 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IconChevronDown, IconChevronUp } from '@/components/ui/icons';
 import { Select } from '@/components/ui/Select';
 import { DAY_MS, HOUR_MS } from '@/utils/time/durations';
 import {
@@ -145,204 +144,187 @@ export function QuotaForecast(props: QuotaForecastProps) {
           </span>
           <span className={styles.rate}>{rateLabel}</span>
         </p>
-        <button
-          type="button"
-          className={styles.collapse}
-          onClick={() => setSettings({ collapsed: !settings.collapsed })}
-          aria-expanded={!settings.collapsed}
-          aria-label={t(
-            settings.collapsed
-              ? 'quota_management.forecast_expand'
-              : 'quota_management.forecast_collapse'
-          )}
-        >
-          {settings.collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
-        </button>
       </header>
 
-      {!settings.collapsed && (
-        <>
-          <div className={styles.tabs} role="tablist">
-            {(['remaining', 'drain'] as const).map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={tab === id ? styles.tabActive : styles.tab}
-                onClick={() => setTab(id)}
-              >
-                {t(`quota_management.forecast_tab_${id}`)}
-              </button>
-            ))}
-          </div>
+      <div className={styles.tabs} role="tablist">
+        {(['remaining', 'drain'] as const).map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={tab === id ? styles.tabActive : styles.tab}
+            onClick={() => setTab(id)}
+          >
+            {t(`quota_management.forecast_tab_${id}`)}
+          </button>
+        ))}
+      </div>
 
-          <div className={styles.legendRow}>
-            <div className={styles.legend}>
-              <span className={styles.legendSolid}>
-                {t(
-                  tab === 'remaining'
-                    ? 'quota_management.forecast_legend_remaining'
-                    : 'quota_management.forecast_legend_drain'
+      <div className={styles.legendRow}>
+        <div className={styles.legend}>
+          <span className={styles.legendSolid}>
+            {t(
+              tab === 'remaining'
+                ? 'quota_management.forecast_legend_remaining'
+                : 'quota_management.forecast_legend_drain'
+            )}
+          </span>
+          <span className={styles.legendDashed}>
+            {t('quota_management.forecast_legend_projected')}
+          </span>
+        </div>
+        <label className={styles.horizon}>
+          <span>{t('quota_management.forecast_next')}</span>
+          <Select
+            value={String(settings.horizonDays)}
+            options={HORIZON_OPTIONS.map((days) => ({
+              value: String(days),
+              label: t('quota_management.forecast_days', { count: days }),
+            }))}
+            onChange={(value) => setSettings({ horizonDays: Number(value) })}
+            ariaLabel={t('quota_management.forecast_horizon')}
+            size="sm"
+          />
+        </label>
+      </div>
+
+      <div className={styles.chart}>
+        <div className={styles.yAxis} aria-hidden="true">
+          {yTicks.map((tick) => (
+            <span key={tick} style={{ bottom: `${(tick / yMax) * 100}%` }}>
+              {tab === 'remaining' ? `${Math.round(tick)}%` : `${roundTick(tick)}%/h`}
+            </span>
+          ))}
+        </div>
+        <div className={styles.plot}>
+          <svg
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            preserveAspectRatio="none"
+            className={styles.svg}
+            role="img"
+            aria-label={t('quota_management.forecast_chart_label')}
+          >
+            {yTicks.map((tick) => (
+              <line
+                key={tick}
+                x1={0}
+                x2={VIEW_W}
+                y1={y(tick)}
+                y2={y(tick)}
+                className={styles.grid}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {members.length > 0 && (
+              <>
+                <path d={toArea(projected)} className={styles.areaProjected} />
+                <path d={toArea(solid, tab === 'drain')} className={styles.area} />
+                <path
+                  d={toPath(projected)}
+                  className={styles.lineProjected}
+                  vectorEffect="non-scaling-stroke"
+                />
+                {solid.length > 1 && (
+                  <path
+                    d={toPath(solid, tab === 'drain')}
+                    className={styles.line}
+                    vectorEffect="non-scaling-stroke"
+                  />
                 )}
-              </span>
-              <span className={styles.legendDashed}>
-                {t('quota_management.forecast_legend_projected')}
-              </span>
-            </div>
-            <label className={styles.horizon}>
-              <span>{t('quota_management.forecast_next')}</span>
+              </>
+            )}
+            <line
+              x1={x(now)}
+              x2={x(now)}
+              y1={0}
+              y2={VIEW_H}
+              className={styles.now}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <span className={styles.nowLabel} style={{ left: `${xPercent(now)}%` }}>
+            {t('quota_management.forecast_now')}
+          </span>
+          {members.length === 0 && (
+            <p className={styles.empty}>
+              {loading
+                ? t('quota_management.forecast_loading')
+                : t('quota_management.forecast_empty')}
+            </p>
+          )}
+        </div>
+        <div className={styles.xAxis} aria-hidden="true">
+          {dayTicks.map((tick) => (
+            <span key={tick} style={{ left: `${xPercent(tick)}%` }}>
+              {formatDay(tick)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <footer className={styles.foot}>
+        <p className={styles.facts}>
+          {members.length > 0 && rate !== null && (
+            <span className={styles.factStrong}>
+              {projection.emptyAtMs !== null
+                ? t('quota_management.forecast_empty_at', {
+                    when: formatWhen(projection.emptyAtMs),
+                  })
+                : t('quota_management.forecast_lasts', { when: formatWhen(endMs) })}
+            </span>
+          )}
+          {projection.nextReset && (
+            <span>
+              {t('quota_management.forecast_next_reset', {
+                gain: `+${Math.round(projection.nextReset.gain)}%`,
+                when: formatWhen(projection.nextReset.atMs),
+              })}
+            </span>
+          )}
+          {rateSource && rate !== null && (
+            <span className={styles.source}>
+              {t(`quota_management.forecast_source_${rateSource}`)}
+            </span>
+          )}
+        </p>
+        <details className={styles.settings}>
+          <summary>{t('quota_management.forecast_settings')}</summary>
+          <div className={styles.settingsBody}>
+            <label>
+              <span>{t('quota_management.forecast_rate_override')}</span>
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                inputMode="decimal"
+                placeholder={t('quota_management.forecast_rate_auto')}
+                value={settings.rateOverride ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value.trim();
+                  const parsed = Number(value);
+                  setSettings({
+                    rateOverride: value === '' || !Number.isFinite(parsed) ? null : parsed,
+                  });
+                }}
+              />
+            </label>
+            <label>
+              <span>{t('quota_management.forecast_lookback')}</span>
               <Select
-                value={String(settings.horizonDays)}
-                options={HORIZON_OPTIONS.map((days) => ({
-                  value: String(days),
-                  label: t('quota_management.forecast_days', { count: days }),
+                value={String(settings.lookbackHours)}
+                options={LOOKBACK_OPTIONS.map((hours) => ({
+                  value: String(hours),
+                  label: t('quota_management.forecast_hours', { count: hours }),
                 }))}
-                onChange={(value) => setSettings({ horizonDays: Number(value) })}
-                ariaLabel={t('quota_management.forecast_horizon')}
+                onChange={(value) => setSettings({ lookbackHours: Number(value) })}
+                ariaLabel={t('quota_management.forecast_lookback')}
                 size="sm"
               />
             </label>
           </div>
-
-          <div className={styles.chart}>
-            <div className={styles.yAxis} aria-hidden="true">
-              {yTicks.map((tick) => (
-                <span key={tick} style={{ bottom: `${(tick / yMax) * 100}%` }}>
-                  {tab === 'remaining' ? `${Math.round(tick)}%` : `${roundTick(tick)}%/h`}
-                </span>
-              ))}
-            </div>
-            <div className={styles.plot}>
-              <svg
-                viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-                preserveAspectRatio="none"
-                className={styles.svg}
-                role="img"
-                aria-label={t('quota_management.forecast_chart_label')}
-              >
-                {yTicks.map((tick) => (
-                  <line
-                    key={tick}
-                    x1={0}
-                    x2={VIEW_W}
-                    y1={y(tick)}
-                    y2={y(tick)}
-                    className={styles.grid}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-                {members.length > 0 && (
-                  <>
-                    <path d={toArea(projected)} className={styles.areaProjected} />
-                    <path d={toArea(solid, tab === 'drain')} className={styles.area} />
-                    <path
-                      d={toPath(projected)}
-                      className={styles.lineProjected}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    {solid.length > 1 && (
-                      <path
-                        d={toPath(solid, tab === 'drain')}
-                        className={styles.line}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                  </>
-                )}
-                <line
-                  x1={x(now)}
-                  x2={x(now)}
-                  y1={0}
-                  y2={VIEW_H}
-                  className={styles.now}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              <span className={styles.nowLabel} style={{ left: `${xPercent(now)}%` }}>
-                {t('quota_management.forecast_now')}
-              </span>
-              {members.length === 0 && (
-                <p className={styles.empty}>
-                  {loading
-                    ? t('quota_management.forecast_loading')
-                    : t('quota_management.forecast_empty')}
-                </p>
-              )}
-            </div>
-            <div className={styles.xAxis} aria-hidden="true">
-              {dayTicks.map((tick) => (
-                <span key={tick} style={{ left: `${xPercent(tick)}%` }}>
-                  {formatDay(tick)}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <footer className={styles.foot}>
-            <p className={styles.facts}>
-              {members.length > 0 && rate !== null && (
-                <span className={styles.factStrong}>
-                  {projection.emptyAtMs !== null
-                    ? t('quota_management.forecast_empty_at', {
-                        when: formatWhen(projection.emptyAtMs),
-                      })
-                    : t('quota_management.forecast_lasts', { when: formatWhen(endMs) })}
-                </span>
-              )}
-              {projection.nextReset && (
-                <span>
-                  {t('quota_management.forecast_next_reset', {
-                    gain: `+${Math.round(projection.nextReset.gain)}%`,
-                    when: formatWhen(projection.nextReset.atMs),
-                  })}
-                </span>
-              )}
-              {rateSource && rate !== null && (
-                <span className={styles.source}>
-                  {t(`quota_management.forecast_source_${rateSource}`)}
-                </span>
-              )}
-            </p>
-            <details className={styles.settings}>
-              <summary>{t('quota_management.forecast_settings')}</summary>
-              <div className={styles.settingsBody}>
-                <label>
-                  <span>{t('quota_management.forecast_rate_override')}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    inputMode="decimal"
-                    placeholder={t('quota_management.forecast_rate_auto')}
-                    value={settings.rateOverride ?? ''}
-                    onChange={(event) => {
-                      const value = event.target.value.trim();
-                      const parsed = Number(value);
-                      setSettings({
-                        rateOverride: value === '' || !Number.isFinite(parsed) ? null : parsed,
-                      });
-                    }}
-                  />
-                </label>
-                <label>
-                  <span>{t('quota_management.forecast_lookback')}</span>
-                  <Select
-                    value={String(settings.lookbackHours)}
-                    options={LOOKBACK_OPTIONS.map((hours) => ({
-                      value: String(hours),
-                      label: t('quota_management.forecast_hours', { count: hours }),
-                    }))}
-                    onChange={(value) => setSettings({ lookbackHours: Number(value) })}
-                    ariaLabel={t('quota_management.forecast_lookback')}
-                    size="sm"
-                  />
-                </label>
-              </div>
-            </details>
-          </footer>
-        </>
-      )}
+        </details>
+      </footer>
     </section>
   );
 }

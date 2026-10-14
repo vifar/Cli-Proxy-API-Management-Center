@@ -5,12 +5,30 @@ import {
   estimateDrainFromHistory,
   estimateDrainFromWindows,
   projectPool,
+  readPoolHistory,
+  writePoolHistory,
+  readForecastSettings,
+  writeForecastSettings,
 } from '../src/features/quota/quotaForecast';
 
 const HOUR = 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 13, 12);
 
 describe('projectPool', () => {
+  test('simultaneous resets return the combined missing capacity', () => {
+    const result = projectPool(
+      [
+        { id: 'a', remaining: 20, resetAtMs: NOW + HOUR, periodHours: 168 },
+        { id: 'b', remaining: 20, resetAtMs: NOW + HOUR, periodHours: 168 },
+        { id: 'c', remaining: 50, resetAtMs: NOW + 2 * HOUR, periodHours: 168 },
+      ],
+      0,
+      NOW,
+      3 * HOUR
+    );
+    expect(result.nextReset).toEqual({ atMs: NOW + HOUR, gain: 160 });
+    expect(result.points).toContainEqual({ t: NOW + HOUR, value: 250 });
+  });
   test('drains linearly and reports when the pool empties', () => {
     const result = projectPool(
       [{ id: 'a', remaining: 50, resetAtMs: null, periodHours: null }],
@@ -50,6 +68,40 @@ describe('projectPool', () => {
     const resetTimes = result.points.filter((point) => point.value === 100).map((point) => point.t);
     expect(resetTimes).toContain(NOW + HOUR);
   });
+});
+
+test('persisted history belongs to a normalized connection and provider', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const data = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => data.set(key, value),
+    },
+  });
+  try {
+    const sample = [{ t: NOW, remaining: 80, capacity: 100 }];
+    data.set('quota-pool-history:v1:claude', JSON.stringify(sample));
+    expect(readPoolHistory('https://server-b.example', 'claude')).toEqual([]);
+    writePoolHistory('https://server-a.example/v0/management/', 'claude', sample);
+    expect(readPoolHistory('https://server-a.example', 'claude')).toEqual(sample);
+    expect(readPoolHistory('https://server-b.example', 'claude')).toEqual([]);
+    expect(readPoolHistory('https://server-a.example', 'codex')).toEqual([]);
+    writePoolHistory('https://server-b.example', 'claude', []);
+    expect(readPoolHistory('https://server-a.example/', 'claude')).toEqual(sample);
+    data.set(
+      'quota-forecast-settings:v1',
+      JSON.stringify({ horizonDays: 3, rateOverride: 2, lookbackHours: 6, collapsed: true })
+    );
+    const settings = readForecastSettings();
+    expect(settings).toEqual({ horizonDays: 3, rateOverride: 2, lookbackHours: 6 });
+    writeForecastSettings(settings);
+    expect(JSON.parse(data.get('quota-forecast-settings:v1')!)).toEqual(settings);
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
 });
 
 describe('drain estimates', () => {

@@ -11,6 +11,7 @@
  */
 
 import { HOUR_MS } from '@/utils/time/durations';
+import { normalizeApiBase } from '@/utils/connection';
 
 export interface PoolMember {
   id: string;
@@ -193,6 +194,7 @@ export function projectPool(
     const gain = 100 - member.remaining;
     member.remaining = 100;
     if (nextReset === null) nextReset = { atMs: event.t, gain };
+    else if (nextReset.atMs === event.t) nextReset.gain += gain;
     points.push({ t: event.t, value: total() });
   }
   if (cursor < endMs) advance(endMs);
@@ -202,12 +204,14 @@ export function projectPool(
 
 /* ------------------------------------------------------------- storage */
 
-const HISTORY_KEY_PREFIX = 'quota-pool-history:v1:';
+const HISTORY_KEY_PREFIX = 'quota-pool-history:v2:';
+const historyKey = (apiBase: string, scope: string) =>
+  HISTORY_KEY_PREFIX + JSON.stringify([normalizeApiBase(apiBase), scope]);
 const SETTINGS_KEY = 'quota-forecast-settings:v1';
 
-export function readPoolHistory(scope: string): PoolSample[] {
+export function readPoolHistory(apiBase: string, scope: string): PoolSample[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY_PREFIX + scope);
+    const raw = localStorage.getItem(historyKey(apiBase, scope));
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
@@ -223,9 +227,9 @@ export function readPoolHistory(scope: string): PoolSample[] {
   }
 }
 
-export function writePoolHistory(scope: string, history: PoolSample[]): void {
+export function writePoolHistory(apiBase: string, scope: string, history: PoolSample[]): void {
   try {
-    localStorage.setItem(HISTORY_KEY_PREFIX + scope, JSON.stringify(history));
+    localStorage.setItem(historyKey(apiBase, scope), JSON.stringify(history));
   } catch {
     // Storage full or unavailable: the forecast still works from live windows.
   }
@@ -236,14 +240,12 @@ export interface ForecastSettings {
   /** Manual drain rate in percent per hour; null = estimate automatically. */
   rateOverride: number | null;
   lookbackHours: number;
-  collapsed: boolean;
 }
 
 export const DEFAULT_FORECAST_SETTINGS: ForecastSettings = {
   horizonDays: 7,
   rateOverride: null,
   lookbackHours: 24,
-  collapsed: false,
 };
 
 export function readForecastSettings(): ForecastSettings {
@@ -251,7 +253,11 @@ export function readForecastSettings(): ForecastSettings {
     const parsed = JSON.parse(
       localStorage.getItem(SETTINGS_KEY) ?? '{}'
     ) as Partial<ForecastSettings> | null;
-    return { ...DEFAULT_FORECAST_SETTINGS, ...(parsed ?? {}) };
+    return {
+      horizonDays: parsed?.horizonDays ?? DEFAULT_FORECAST_SETTINGS.horizonDays,
+      rateOverride: parsed?.rateOverride ?? DEFAULT_FORECAST_SETTINGS.rateOverride,
+      lookbackHours: parsed?.lookbackHours ?? DEFAULT_FORECAST_SETTINGS.lookbackHours,
+    };
   } catch {
     return DEFAULT_FORECAST_SETTINGS;
   }

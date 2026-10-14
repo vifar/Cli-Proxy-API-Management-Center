@@ -1938,32 +1938,5 @@
     "modelCatalog": {
       "notLoaded": "未加载"
     }
-  },
-  "vibeproxy": {
-    "title": "AI 提供商",
-    "description": "VibeProxy 的服务与自定义提供商，共享已保存的模型选择。",
-    "refresh": "刷新",
-    "searchProviders": "搜索提供商",
-    "connected": "已连接",
-    "notConnected": "未连接",
-    "subscription": "订阅服务",
-    "compatible": "API / 自定义提供商",
-    "ofModels": "共 {{total}} 个模型",
-    "selectModels": "选择模型",
-    "accounts": "{{count}} 个账户",
-    "connectDesktop": "在 VibeProxy 中连接",
-    "noProviders": "没有匹配的提供商。",
-    "modelTitle": "选择模型 · {{name}}",
-    "persistHint": "保存的选择与 VibeProxy 桌面应用共享。",
-    "disabledHint": "此提供商已停用。保存模型不会启用它；请在 VibeProxy 中启用。",
-    "searchModels": "搜索模型",
-    "selectAll": "全选",
-    "deselectAll": "取消全选",
-    "selectedCount": "已选 {{count}} / {{total}}",
-    "modelsSaved": "模型选择已保存到 VibeProxy。",
-    "unavailable": "VibeProxy 模型助手不可用。请启动本地助手以管理桌面模型选择。",
-    "apiConfiguration": "API 密钥配置",
-    "saving": "正在保存…",
-    "providerLabel": "提供商 / 连接"
   }
 }

@@ -1940,34 +1940,5 @@
     "modelCatalog": {
       "notLoaded": "Not loaded"
     }
-  },
-  "vibeproxy": {
-    "title": "AI Providers",
-    "description": "Services and custom providers from VibeProxy, with the same saved model selections.",
-    "refresh": "Refresh",
-    "searchProviders": "Search providers",
-    "connected": "Connected",
-    "notConnected": "Not connected",
-    "subscription": "Subscription service",
-    "compatible": "API / custom provider",
-    "ofModels": "of {{total}} models",
-    "selectModels": "Select models",
-    "accounts": "{{count}} accounts",
-    "connectDesktop": "Connect in VibeProxy",
-    "noProviders": "No providers match your search.",
-    "modelTitle": "Select models · {{name}}",
-    "persistHint": "Saved selections are shared with the VibeProxy desktop app.",
-    "disabledHint": "This provider is disabled. Saving models keeps it disabled; enable it in VibeProxy to use them.",
-    "searchModels": "Search models",
-    "selectAll": "Select all",
-    "deselectAll": "Deselect all",
-    "selectedCount": "{{count}} of {{total}} selected",
-    "modelsSaved": "Model selection saved in VibeProxy.",
-    "unavailable": "The VibeProxy model helper is unavailable. Start the local helper to manage desktop selections.",
-    "apiConfiguration": "API key configuration",
-    "saving": "Saving…",
-    "accounts_one": "{{count}} account",
-    "accounts_other": "{{count}} accounts",
-    "providerLabel": "Provider / connection"
   }
 }

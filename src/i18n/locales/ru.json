@@ -1938,32 +1938,5 @@
     "modelCatalog": {
       "notLoaded": "Не загружено"
     }
-  },
-  "vibeproxy": {
-    "title": "Провайдеры ИИ",
-    "description": "Сервисы и пользовательские провайдеры VibeProxy с общими сохранёнными моделями.",
-    "refresh": "Обновить",
-    "searchProviders": "Поиск провайдеров",
-    "connected": "Подключён",
-    "notConnected": "Не подключён",
-    "subscription": "Сервис по подписке",
-    "compatible": "API / свой провайдер",
-    "ofModels": "из {{total}} моделей",
-    "selectModels": "Выбрать модели",
-    "accounts": "Аккаунтов: {{count}}",
-    "connectDesktop": "Подключите в VibeProxy",
-    "noProviders": "Подходящих провайдеров нет.",
-    "modelTitle": "Выбор моделей · {{name}}",
-    "persistHint": "Сохранённый выбор используется и в настольном приложении VibeProxy.",
-    "disabledHint": "Провайдер отключён. Сохранение моделей не включит его; включите его в VibeProxy.",
-    "searchModels": "Поиск моделей",
-    "selectAll": "Выбрать все",
-    "deselectAll": "Снять выбор",
-    "selectedCount": "Выбрано {{count}} из {{total}}",
-    "modelsSaved": "Выбор моделей сохранён в VibeProxy.",
-    "unavailable": "Локальный помощник моделей VibeProxy недоступен. Запустите его для управления выбором моделей.",
-    "apiConfiguration": "Настройки API-ключей",
-    "saving": "Сохранение…",
-    "providerLabel": "Провайдер / подключение"
   }
 }
