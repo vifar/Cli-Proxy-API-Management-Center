@@ -26,14 +26,18 @@ const contracts = Object.fromEntries(
   ])
 );
 
-test('workflow scheduling retains one PR suite and only the original tag release trigger', () => {
+test('workflow scheduling retains one PR suite without release automation', () => {
   expect(Object.keys(contracts).sort()).toEqual([
     'ci.yml',
     'no-mistakes-required.yml',
-    'release.yml',
     'upstream-sync.yml',
   ]);
-  expect(contracts['release.yml'].on).toEqual({ push: { tags: ['v*'] } });
+  for (const workflow of Object.values(contracts)) {
+    expect(workflow.on).not.toHaveProperty('release');
+    if (workflow.on.push !== undefined) {
+      expect(workflow.on.push).toEqual({ branches: ['main', 'dev'] });
+    }
+  }
   expect(Object.keys(contracts['ci.yml'].jobs)).toEqual(['verify']);
   expect(contracts['ci.yml'].on.pull_request).toBeNull();
   const steps = contracts['ci.yml'].jobs.verify.steps;
