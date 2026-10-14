@@ -55,6 +55,23 @@ describe('collectLedgerLimits', () => {
     expect(collectLedgerLimits('claude', { status: 'loading' })).toEqual([]);
   });
 
+  test('unknown account and longest limits never fall back to known smaller limits', () => {
+    for (const provider of ['claude', 'codex', 'devin', 'meta'] as const) {
+      const limits = [
+        { id: provider === 'claude' ? 'seven-day' : 'weekly', label: '', remaining: null,
+          resetAtMs: NOW + 9 * HOUR, periodHours: 168 },
+        { id: 'short', label: '', remaining: 90, resetAtMs: NOW + HOUR, periodHours: 5 },
+      ];
+      expect(pickPoolLimit(limits)).toBe(limits[0]);
+    }
+    const limits = [
+      { id: 'long', label: '', remaining: null, resetAtMs: null, periodHours: 24 },
+      { id: 'short', label: '', remaining: 90, resetAtMs: null, periodHours: 5 },
+    ];
+    expect(pickPoolLimit(limits)).toBe(limits[0]);
+    expect(pickPoolLimit([])).toBeNull();
+  });
+
   test('pool limit prefers the account-wide window', () => {
     expect(pickPoolLimit(collectLedgerLimits('claude', claudeQuota))?.id).toBe('seven-day');
   });

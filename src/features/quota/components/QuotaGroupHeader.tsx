@@ -31,7 +31,9 @@ export function QuotaGroupHeader({
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const icon = getAuthFileIcon(type, resolvedTheme);
-  const known = poolLimits.filter((limit): limit is LedgerLimit => limit !== null);
+  const known = poolLimits.filter(
+    (limit): limit is LedgerLimit => limit !== null && limit.remaining !== null
+  );
   const total = known.reduce((sum, limit) => sum + (limit.remaining ?? 0), 0);
   const first = known[0];
   const label = first

@@ -64,12 +64,10 @@ export function QuotaForecast(props: QuotaForecastProps) {
   );
 
   const observed = useMemo<ForecastPoint[]>(() => {
-    const points = currentPoolHistory(history, capacity)
-      .filter((sample) => sample.t >= startMs && sample.t < now)
+    return currentPoolHistory(history, capacity)
+      .filter((sample) => sample.t >= startMs && sample.t <= now)
       .map((sample) => ({ t: sample.t, value: sample.remaining }));
-    if (members.length > 0) points.push({ t: now, value: total });
-    return points;
-  }, [history, startMs, now, capacity, members.length, total]);
+  }, [history, startMs, now, capacity]);
 
   const drainObserved = useMemo(
     () => drainSeries(history, capacity).filter((point) => point.t >= startMs && point.t <= now),

@@ -202,11 +202,10 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
  * long window when present, otherwise the longest reported window.
  */
 export function pickPoolLimit(limits: readonly LedgerLimit[]): LedgerLimit | null {
-  const known = limits.filter((limit) => limit.remaining !== null);
-  const pool = known.find((limit) => POOL_WINDOW_IDS.has(limit.id));
+  const pool = limits.find((limit) => POOL_WINDOW_IDS.has(limit.id));
   if (pool) return pool;
   // Longest period wins; earlier payload position breaks a tie.
-  return known.reduce<LedgerLimit | null>(
+  return limits.reduce<LedgerLimit | null>(
     (best, limit) =>
       best === null || (limit.periodHours ?? 0) > (best.periodHours ?? 0) ? limit : best,
     null

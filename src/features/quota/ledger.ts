@@ -1,6 +1,6 @@
 import type { QuotaFileEntry } from './logic';
 import type { QuotaCardState } from './providers';
-import { buildTimelineLane } from './quotaTimelineModel';
+import { collectLedgerLimits, pickPoolLimit } from './ledgerLimits';
 
 /** Redact addresses wherever they appear, including addresses embedded in filenames. */
 export function maskQuotaIdentity(value: string): string {
@@ -23,28 +23,26 @@ export function summarizeQuotaEntries(
   entries: QuotaFileEntry[],
   quotaFor: (entry: QuotaFileEntry) => QuotaCardState | undefined
 ) {
-  const lanes = entries.map((entry) =>
-    buildTimelineLane({
-      name: entry.file.name,
-      displayName: '',
-      provider: entry.type,
-      quota: quotaFor(entry),
-    })
+  const limits = entries.map((entry) =>
+    pickPoolLimit(collectLedgerLimits(entry.type, quotaFor(entry)))
   );
-  const periods = lanes.flatMap((lane) =>
-    lane.periodHours !== null && lane.remaining !== null && Number.isFinite(lane.remaining)
-      ? [lane.periodHours]
-      : []
+  const periods = limits.flatMap((limit) =>
+    limit?.periodHours !== null && limit?.periodHours !== undefined ? [limit.periodHours] : []
   );
   const periodHours = periods.length ? Math.max(...periods) : null;
-  const segments = lanes.map((lane) =>
-    lane.periodHours === periodHours && lane.remaining !== null && Number.isFinite(lane.remaining)
-      ? lane.remaining
+  const segments = limits.map((limit) =>
+    limit &&
+    limit.periodHours === periodHours &&
+    limit.remaining !== null &&
+    Number.isFinite(limit.remaining)
+      ? limit.remaining
       : null
   );
   const known = segments.filter((percent): percent is number => percent !== null);
-  const resets = lanes.flatMap((lane, index) =>
-    segments[index] !== null && lane.anchorMs !== null ? [lane.anchorMs] : []
+  const resets = limits.flatMap((limit, index) =>
+    segments[index] !== null && limit?.resetAtMs !== null && limit?.resetAtMs !== undefined
+      ? [limit.resetAtMs]
+      : []
   );
   return {
     total: known.length ? known.reduce((sum, percent) => sum + percent, 0) : null,
