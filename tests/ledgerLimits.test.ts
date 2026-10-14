@@ -31,6 +31,80 @@ const claudeQuota = {
 };
 
 describe('collectLedgerLimits', () => {
+  test('plugin buckets retain remaining percent, labels, resets, and pool ordering', () => {
+    const limits = collectLedgerLimits('plugin', {
+      status: 'success',
+      groups: [
+        {
+          buckets: [
+            {
+              id: 'short',
+              label: 'Session',
+              remainingFraction: 0.8,
+              resetAtMs: NOW + HOUR,
+              periodHours: 5,
+            },
+          ],
+        },
+        {
+          buckets: [
+            {
+              id: 'long',
+              label: 'Account',
+              remainingFraction: 0.6,
+              resetAtMs: NOW + 9 * HOUR,
+              periodHours: 168,
+            },
+          ],
+        },
+      ],
+    });
+    expect(limits).toEqual([
+      {
+        id: 'long',
+        label: 'Account',
+        remaining: 60,
+        resetAtMs: NOW + 9 * HOUR,
+        periodHours: 168,
+      },
+      {
+        id: 'short',
+        label: 'Session',
+        remaining: 80,
+        resetAtMs: NOW + HOUR,
+        periodHours: 5,
+      },
+    ]);
+    expect(pickPoolLimit(limits)).toBe(limits[0]);
+    expect(collectLedgerLimits('plugin', { status: 'loading', groups: [] })).toEqual([]);
+  });
+
+  test('Qoder snapshot uses fractional usage and expiry without inventing recurrence', () => {
+    expect(
+      collectLedgerLimits('qoder', {
+        status: 'success',
+        usage: { percentage: 0.25, expires_at: NOW + 9 * HOUR },
+      })
+    ).toEqual([
+      {
+        id: 'usage',
+        label: '',
+        labelKey: 'qoder_quota.usage_label',
+        remaining: 75,
+        resetAtMs: NOW + 9 * HOUR,
+        periodHours: null,
+      },
+    ]);
+    expect(collectLedgerLimits('qoder', { status: 'success', usage: null })).toEqual([]);
+    const exhausted = collectLedgerLimits('qoder', {
+      status: 'success',
+      usage: { percentage: 1.25, expires_at: 0 },
+    });
+    expect(exhausted[0].remaining).toBe(0);
+    expect(exhausted[0].resetAtMs).toBeNull();
+    expect(blockedUntilMs(exhausted, NOW)).toBeNull();
+  });
+
   test('promotes Kimi longest window and preserves every other payload position', () => {
     const limits = collectLedgerLimits('kimi', {
       status: 'success',

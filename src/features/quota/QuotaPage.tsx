@@ -20,12 +20,11 @@ import { useNow } from '@/hooks/useNow';
 import { useRevealGroup } from '@/hooks/motion';
 import { useAuthStore, useQuotaStore, useThemeStore } from '@/stores';
 import type { AuthFileItem, ResolvedTheme } from '@/types';
-import { getQuotaCacheKey } from '@/utils/quota/identity';
+import { getQuotaCacheKey, getQuotaDisplayName } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
 import { QuotaTimeline } from './components/QuotaTimeline';
-import { QuotaSummary } from './components/QuotaSummary';
 import { QuotaForecast } from './components/QuotaForecast';
 import { QuotaGroupHeader } from './components/QuotaGroupHeader';
 import { QuotaLedgerRow } from './components/QuotaLedgerRow';
@@ -297,6 +296,8 @@ export function QuotaPage() {
 
   const { batchLoading, loadQuota } = useQuotaBatchLoader();
   const { resettingQuotaName, refreshQuota, resetQuota } = useQuotaActions(disableControls);
+  const actionDisplayName = (file: AuthFileItem) =>
+    showEmails ? getQuotaDisplayName(file) : maskQuotaIdentity(getQuotaDisplayName(file));
 
   const pendingRefreshRef = useRef<number | null>(null);
   const prevLoadingRef = useRef(loading);
@@ -555,10 +556,6 @@ export function QuotaPage() {
           </div>
         )}
 
-        {!loading && entries.length > 0 && layout === 'cards' && (
-          <QuotaSummary entries={entries} quotaFor={getQuota} resolvedTheme={resolvedTheme} />
-        )}
-
         {loading ? (
           <div className={styles.grid} aria-hidden="true">
             {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
@@ -619,8 +616,16 @@ export function QuotaPage() {
                     resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                     showEmails={showEmails}
                     now={clock}
-                    onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-                    onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    onRefresh={() =>
+                      void refreshQuota(
+                        entry.file,
+                        QUOTA_ADAPTERS[entry.type],
+                        actionDisplayName(entry.file)
+                      )
+                    }
+                    onReset={() =>
+                      resetQuota(entry.file, QUOTA_ADAPTERS[entry.type], actionDisplayName(entry.file))
+                    }
                   />
                 </div>
               ) : (
@@ -633,8 +638,16 @@ export function QuotaPage() {
                     canRefresh={canUseActions && !entry.file.disabled}
                     resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                     entranceDelayMs={cardEntranceDelay(index)}
-                    onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
-                    onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    onRefresh={() =>
+                      void refreshQuota(
+                        entry.file,
+                        QUOTA_ADAPTERS[entry.type],
+                        actionDisplayName(entry.file)
+                      )
+                    }
+                    onReset={() =>
+                      resetQuota(entry.file, QUOTA_ADAPTERS[entry.type], actionDisplayName(entry.file))
+                    }
                     showEmails={showEmails}
                   />
                 </div>

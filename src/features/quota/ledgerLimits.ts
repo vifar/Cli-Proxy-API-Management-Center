@@ -101,7 +101,7 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
     ];
   }
 
-  if (provider === 'antigravity') {
+  if (provider === 'antigravity' || provider === 'plugin') {
     const buckets = (
       (
         quota as {
@@ -129,6 +129,24 @@ export function collectLedgerLimits(provider: QuotaProviderType, quota: unknown)
         periodHours: usableMs(bucket.periodHours),
       }))
     );
+  }
+
+  if (provider === 'qoder') {
+    const usage = (quota as { usage?: { percentage?: number; expires_at?: number } | null }).usage;
+    if (!usage) return [];
+    const expiry = usableMs(usage.expires_at);
+    return [
+      {
+        id: 'usage',
+        label: '',
+        labelKey: 'qoder_quota.usage_label',
+        remaining: remainingFromUsed(
+          typeof usage.percentage === 'number' ? usage.percentage * 100 : null
+        ),
+        resetAtMs: expiry !== null && expiry > 0 ? expiry : null,
+        periodHours: null,
+      },
+    ];
   }
 
   if (provider === 'kimi') {
