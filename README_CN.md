@@ -53,7 +53,7 @@
 2. 打开 `http://<host>:<api_port>/management.html`。
 3. 输入 **管理密钥** 并连接。
 
-页面会根据当前 URL 自动识别 API 地址，也支持手动修改。
+API 地址的自动识别、反向代理子路径及手动修改说明见 [README.md 的快速开始](README.md#quick-start)。
 
 > [!NOTE]
 > **管理密钥**用于登录本界面；`access.api-keys` 中的客户端密钥用于请求代理接口，两者不能混用。
@@ -110,14 +110,13 @@ bun install --frozen-lockfile
 bun run build
 ```
 
-产物为 **`dist/index.html`**，JavaScript、CSS 与打包资源均已内联。发布工作流会将其重命名为 `management.html`，供后端托管。
+构建产物、后端托管与标签发布策略见 [README.md 的部署说明](README.md#deployment)。
 
 使用 `bun run preview` 本地预览。建议通过 HTTP 服务访问，直接用 `file://` 打开可能受到浏览器 CORS 限制。
 
 <details>
-<summary><strong>发布细节</strong></summary>
+<summary><strong>构建细节</strong></summary>
 
-- `vX.Y.Z` 格式的标签会触发[发布工作流](.github/workflows/release.yml)。
 - UI 版本在构建时注入，依次取自 `VERSION`、git tag、package 版本，最终回退为 `dev`。
 - 使用 Hash 路由与 ES2020 构建目标，保持部署简单。
 
@@ -150,6 +149,8 @@ bun run dev
 ## 安全提示
 
 请妥善保管管理密钥。启用 **记住密码** 后，密钥会以可逆混淆形式保存在浏览器存储中，**这不是加密**。
+
+登录数据隔离、旧凭据恢复及清理范围见 [README.md 的安全说明](README.md#security)。
 
 建议使用可信设备或独立浏览器配置。开启远程管理前，请评估服务的暴露范围。
 

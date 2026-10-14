@@ -53,7 +53,7 @@ The UI is bundled with [CLI Proxy API](https://github.com/router-for-me/CLIProxy
 2. Open `http://<host>:<api_port>/management.html`.
 3. Enter your **management key** and connect.
 
-The API address is detected from the page URL and can be changed manually.
+The API address is detected from the page URL, including its reverse-proxy subpath, and can be changed manually. For example, `/proxy/management.html` connects through `/proxy/v8/management`; `/proxy` and `/proxy/` retain the same mount path.
 
 > [!NOTE]
 > The **management key** signs you into this UI. Client keys in `access.api-keys` authorize requests to the proxy — they are not interchangeable.
@@ -110,14 +110,13 @@ bun install --frozen-lockfile
 bun run build
 ```
 
-The output is **`dist/index.html`**, with JavaScript, CSS, and bundled assets inlined. The release workflow renames it to `management.html` for backend hosting.
+The output is **`dist/index.html`**, with JavaScript, CSS, and bundled assets inlined. For backend hosting, copy it as `management.html`. This fork has no automated release workflow; pushing a version tag does not publish an asset.
 
 Use `bun run preview` to preview locally. Prefer an HTTP server over opening the file via `file://`, which can encounter browser CORS restrictions.
 
 <details>
-<summary><strong>Release details</strong></summary>
+<summary><strong>Build details</strong></summary>
 
-- Tags matching `vX.Y.Z` trigger [the release workflow](.github/workflows/release.yml).
 - The UI version is injected at build time from `VERSION`, then git tags, then the package version, with `dev` as the final fallback.
 - Hash routing and an ES2020 build target keep deployment simple.
 
@@ -150,6 +149,8 @@ Issues and PRs are welcome. Include reproduction steps, backend and UI versions,
 ## Security
 
 Treat the management key as a secret. When **remember password** is enabled, it is persisted in browser storage using reversible obfuscation — **not encryption**.
+
+Remembered credentials are scoped to both the panel mount path and the selected API address. Legacy credentials are restored only when their normalized API address exactly matches the detected panel address; otherwise, sign in again. Clearing local login data on the System page removes all remembered panel/backend profiles and legacy login records for the current browser origin, while preserving unrelated settings.
 
 Use a trusted device or dedicated browser profile. Enable remote management only after evaluating the exposure of your server.
 
