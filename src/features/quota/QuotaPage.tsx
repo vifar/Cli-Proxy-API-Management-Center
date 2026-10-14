@@ -29,6 +29,7 @@ import { QuotaForecast } from './components/QuotaForecast';
 import { QuotaGroupHeader } from './components/QuotaGroupHeader';
 import { QuotaLedgerRow } from './components/QuotaLedgerRow';
 import { collectLedgerLimits, pickPoolLimit } from './ledgerLimits';
+import { getFreshQuotaObservation } from './quotaObservation';
 import {
   appendPoolSample,
   estimateDrainFromHistory,
@@ -281,9 +282,10 @@ export function QuotaPage() {
           const current = adapter.storeSelector(state);
           const before = adapter.storeSelector(previous);
           for (const [key, quota] of Object.entries(current)) {
-            if (quota.status !== 'success' || quota === before[key]) continue;
+            const observation = getFreshQuotaObservation(quota, before[key]);
+            if (!observation) continue;
             freshObservations.current.set(`${type}:${key}`, {
-              t: Date.now(),
+              t: observation.t,
               revision: ++observationRevision.current,
             });
           }
