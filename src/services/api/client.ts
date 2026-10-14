@@ -222,9 +222,6 @@ class ApiClient {
     return response.data;
   }
 
-  /**
-   * Create management data.
-   */
   async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.post<T>(url, data, this.scopeRequest(config));
     return response.data;
