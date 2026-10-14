@@ -41,7 +41,6 @@ export interface PoolProjection {
 }
 
 export const HISTORY_RETENTION_MS = 14 * 24 * HOUR_MS;
-/** Samples closer together than this replace each other instead of appending. */
 const SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 /** Drain rates need at least this much observed time to be trusted. */
 const MIN_OBSERVED_MS = HOUR_MS;
@@ -50,11 +49,12 @@ const MIN_OBSERVED_MS = HOUR_MS;
 export function appendPoolSample(history: PoolSample[], sample: PoolSample): PoolSample[] {
   const kept = history.filter((entry) => sample.t - entry.t < HISTORY_RETENTION_MS);
   const last = kept[kept.length - 1];
-  if (last && sample.t - last.t < SAMPLE_INTERVAL_MS && last.capacity === sample.capacity) {
-    // Keep the first timestamp of the burst so a steady refresh loop cannot
-    // keep pushing the sample forward and hide the elapsed time.
-    if (last.remaining === sample.remaining) return kept;
-    return [...kept.slice(0, -1), { ...sample, t: last.t }];
+  if (
+    last &&
+    Math.floor(sample.t / SAMPLE_INTERVAL_MS) === Math.floor(last.t / SAMPLE_INTERVAL_MS) &&
+    last.capacity === sample.capacity
+  ) {
+    return [...kept.slice(0, -1), sample];
   }
   return [...kept, sample];
 }

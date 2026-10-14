@@ -214,12 +214,65 @@ describe('drain estimates', () => {
     expect(rate).toBeCloseTo(70 / 10);
   });
 
-  test('samples inside the coalescing interval replace the last value', () => {
+  test('samples in the same five-minute bucket retain the latest observation time', () => {
     const first = appendPoolSample([], { t: NOW, remaining: 100, capacity: 100 });
     const second = appendPoolSample(first, { t: NOW + 60_000, remaining: 95, capacity: 100 });
-    expect(second).toEqual([{ t: NOW, remaining: 95, capacity: 100 }]);
+    expect(second).toEqual([{ t: NOW + 60_000, remaining: 95, capacity: 100 }]);
     const third = appendPoolSample(second, { t: NOW + HOUR, remaining: 90, capacity: 100 });
     expect(third).toHaveLength(2);
+  });
+
+  test('coalesced drain uses the actual nine-minute observation interval', () => {
+    let history = appendPoolSample([], { t: NOW - 5 * 60_000, remaining: 100, capacity: 100 });
+    history = appendPoolSample(history, { t: NOW, remaining: 90, capacity: 100 });
+    history = appendPoolSample(history, {
+      t: NOW + 4 * 60_000,
+      remaining: 50,
+      capacity: 100,
+    });
+    expect(currentPoolHistory(history, 100)).toEqual([
+      { t: NOW - 5 * 60_000, remaining: 100, capacity: 100 },
+      { t: NOW + 4 * 60_000, remaining: 50, capacity: 100 },
+    ]);
+    const series = drainSeries(history, 100);
+    expect(series).toHaveLength(1);
+    expect(series[0].t).toBe(NOW + 4 * 60_000);
+    expect(series[0].value).toBeCloseTo(50 / (9 / 60));
+  });
+
+  test('minute-by-minute refreshes retain enough bounded history to estimate drain', () => {
+    let history: ReturnType<typeof appendPoolSample> = [];
+    for (let minute = 0; minute <= 64; minute += 1) {
+      history = appendPoolSample(history, {
+        t: NOW + minute * 60_000,
+        remaining: 100 - minute,
+        capacity: 100,
+      });
+    }
+    expect(history).toHaveLength(13);
+    expect(history[0]).toEqual({ t: NOW + 4 * 60_000, remaining: 96, capacity: 100 });
+    expect(history[12]).toEqual({ t: NOW + 64 * 60_000, remaining: 36, capacity: 100 });
+    expect(estimateDrainFromHistory(history, NOW + 64 * 60_000, 100)).toBeCloseTo(60);
+    expect(drainSeries(history, 100).every((point) => Math.abs(point.value - 60) < 1e-9)).toBe(
+      true
+    );
+  });
+
+  test('unchanged values and refills keep their times while capacity changes stay separate', () => {
+    for (const remaining of [50, 100]) {
+      const first = appendPoolSample([], { t: NOW, remaining: 50, capacity: 100 });
+      const second = appendPoolSample(first, { t: NOW + 60_000, remaining, capacity: 100 });
+      expect(second).toEqual([{ t: NOW + 60_000, remaining, capacity: 100 }]);
+      const resized = appendPoolSample(second, {
+        t: NOW + 2 * 60_000,
+        remaining: 150,
+        capacity: 200,
+      });
+      expect(resized).toHaveLength(2);
+      expect(currentPoolHistory(resized, 200)).toEqual([
+        { t: NOW + 2 * 60_000, remaining: 150, capacity: 200 },
+      ]);
+    }
   });
 });
 
