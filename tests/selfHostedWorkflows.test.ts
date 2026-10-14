@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { parseDocument } from 'yaml';
 
@@ -14,7 +15,13 @@ interface WorkflowContract {
     string,
     {
       'runs-on': string[];
-      steps: { uses?: string; run?: string; with?: Record<string, unknown> }[];
+      steps: {
+        uses?: string;
+        run?: string;
+        if?: string | boolean;
+        'continue-on-error'?: boolean | string;
+        with?: Record<string, unknown>;
+      }[];
     }
   >;
 }
@@ -51,10 +58,52 @@ test('workflow scheduling retains one PR suite without release automation', () =
       .filter((step) => step.uses?.startsWith('oven-sh/setup-bun@'))
       .map((step) => step.with?.['bun-version'])
   ).toEqual(['1.3.14']);
-  expect(steps.filter((step) => step.run).map((step) => step.run)).toEqual([
-    'bun install --frozen-lockfile',
-    'bun run verify',
-  ]);
+});
+
+test('CI performs frozen installation before verification and propagates failures', () => {
+  const steps = contracts['ci.yml'].jobs.verify.steps.filter((step) => step.run !== undefined);
+  for (const step of steps) {
+    expect(step.if).toBeUndefined();
+    expect(step['continue-on-error'] ?? false).toBe(false);
+  }
+  const cwd = mkdtempSync(resolve(import.meta.dir, '../.ci-workflow-test-'));
+  const log = resolve(cwd, 'invocations');
+  writeFileSync(
+    resolve(cwd, 'bun'),
+    '#!/bin/bash\nprintf "%s\\n" "$*" >> "$INVOCATION_LOG"\n' +
+      'if [ "$1" = "$FAIL_COMMAND" ]; then exit 23; fi\n',
+    { mode: 0o755 }
+  );
+  try {
+    for (const failCommand of ['', 'install', 'run']) {
+      writeFileSync(log, '');
+      let status = 0;
+      for (const step of steps) {
+        const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run!], {
+          cwd,
+          env: {
+            ...process.env,
+            PATH: `${cwd}:${process.env.PATH}`,
+            INVOCATION_LOG: log,
+            FAIL_COMMAND: failCommand,
+          },
+          encoding: 'utf8',
+        });
+        if (result.error) throw result.error;
+        expect(result.signal).toBeNull();
+        status = result.status!;
+        if (status !== 0) break;
+      }
+      expect(readFileSync(log, 'utf8').trim().split('\n')).toEqual(
+        failCommand === 'install'
+          ? ['install --frozen-lockfile']
+          : ['install --frozen-lockfile', 'run verify']
+      );
+      expect(status).toBe(failCommand ? 23 : 0);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test('the required PR check consumes only the approved immutable vifar action', () => {
